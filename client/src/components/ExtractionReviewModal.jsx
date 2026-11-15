@@ -32,32 +32,32 @@ const TierBadge = ({ tier }) => {
 
   const badges = {
     gemini_vision: {
-      label: '✨ Extracted via AI Vision',
-      className: 'bg-cyan-500/10 border-cyan-500/30 text-cyan-600 dark:text-cyan-400',
+      label: '✨ AI Vision',
+      className: 'bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)]',
     },
     gemini: {
-      label: '✨ Extracted via AI',
-      className: 'bg-cyan-500/10 border-cyan-500/30 text-cyan-600 dark:text-cyan-400',
+      label: '✨ AI Extracted',
+      className: 'bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)]',
     },
     gemini_text: {
-      label: '🔁 Extracted via OCR + AI',
-      className: 'bg-indigo-500/10 border-indigo-500/30 text-indigo-600 dark:text-indigo-400',
+      label: '🔁 OCR + AI',
+      className: 'bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-secondary)]',
     },
     groq_ocr: {
-      label: '🔄 Extracted via OCR fallback',
-      className: 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400',
+      label: '🔄 OCR Fallback',
+      className: 'bg-[var(--warning-bg)] border border-[var(--warning)]/20 text-[var(--warning)]',
     },
     openrouter_ocr: {
-      label: '🌐 Extracted via OpenRouter',
-      className: 'bg-purple-500/10 border-purple-500/30 text-purple-600 dark:text-purple-400',
+      label: '🌐 OpenRouter OCR',
+      className: 'bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-secondary)]',
     },
     manual: {
-      label: '✋ Manual entry',
-      className: 'bg-slate-500/10 border-slate-500/30 text-slate-500 dark:text-slate-400',
+      label: '✋ Manual Entry',
+      className: 'bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-muted)]',
     },
     json_paste: {
-      label: '📋 Pasted from JSON',
-      className: 'bg-violet-500/10 border-violet-500/30 text-violet-600 dark:text-violet-400',
+      label: '📋 Pasted JSON',
+      className: 'bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-secondary)]',
     },
   };
 
@@ -65,7 +65,7 @@ const TierBadge = ({ tier }) => {
   if (!badge) return null;
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg border text-[10px] font-semibold tracking-wide ${badge.className}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wide ${badge.className}`}>
       {badge.label}
     </span>
   );
@@ -178,7 +178,7 @@ export const ExtractionReviewModal = ({
           const ep = item.extractedPrice !== undefined && item.extractedPrice !== null ? Number(item.extractedPrice) : null;
           const tv = item.totalValue !== undefined && item.totalValue !== null ? Number(item.totalValue) : null;
 
-          // Default strategy: if extractedPrice exists, choose 'screenshot' to protect user from wrong CMC token matches
+          // Default strategy: if extractedPrice exists, choose 'screenshot' to protect user from wrong token matches
           const defaultAction = ep && ep > 0 ? 'screenshot' : 'live';
           const initialMapped = item.yahooSymbol || item.mfSchemeCode || item.mappedSymbol || '';
 
@@ -316,12 +316,12 @@ export const ExtractionReviewModal = ({
 
   const renderSortIndicator = (field) => {
     if (sortField !== field) {
-      return <ArrowUpDown className="w-3 h-3 ml-1 inline text-slate-500 opacity-0 group-hover:opacity-100 transition" />;
+      return <ArrowUpDown className="w-3 h-3 ml-1 inline text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition" />;
     }
     return sortDirection === 'asc' ? (
-      <ChevronUp className="w-3 h-3 ml-1 inline text-cyan-400 font-bold" />
+      <ChevronUp className="w-3 h-3 ml-1 inline text-[var(--text-primary)] font-bold" />
     ) : (
-      <ChevronDown className="w-3 h-3 ml-1 inline text-cyan-400 font-bold" />
+      <ChevronDown className="w-3 h-3 ml-1 inline text-[var(--text-primary)] font-bold" />
     );
   };
 
@@ -528,13 +528,16 @@ export const ExtractionReviewModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
-      <div className="glass-panel w-full max-w-6xl rounded-2xl border dark:border-slate-800 border-slate-200 shadow-2xl p-6 relative max-h-[92vh] flex flex-col">
+    <div className="modal-backdrop animate-fadeIn" onClick={onClose}>
+      <div
+        className="w-full max-w-6xl rounded-2xl border border-[var(--card-border)] bg-[var(--panel-bg)] shadow-2xl p-6 relative max-h-[92vh] flex flex-col text-[var(--text-primary)]"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Close Button */}
         <button
           onClick={onClose}
           disabled={saving}
-          className="absolute top-4 right-4 p-2 text-slate-400 dark:hover:text-white hover:text-slate-900 rounded-xl dark:bg-slate-900/60 bg-slate-100 dark:hover:bg-slate-800 hover:bg-slate-200 border dark:border-slate-800 border-slate-300 transition cursor-pointer"
+          className="absolute top-4 right-4 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)] transition cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
@@ -543,16 +546,16 @@ export const ExtractionReviewModal = ({
         <div className="mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2 mb-1">
-              <div className="flex items-center space-x-2 text-amber-500 dark:text-amber-400 text-xs font-semibold uppercase tracking-wider">
-                <ShieldCheck className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-                <span>Mandatory Review Before Saving</span>
+              <div className="flex items-center space-x-1.5 text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                <ShieldCheck className="w-4 h-4 text-[var(--text-primary)]" />
+                <span>Review Before Saving</span>
               </div>
               <TierBadge tier={tier} />
             </div>
-            <h2 className="text-xl font-bold dark:text-white text-slate-900 font-heading">
+            <h2 className="text-base sm:text-lg font-bold text-[var(--text-primary)] tracking-tight">
               {manualFallback ? 'Manual Entry — Extraction Failed' : 'Verify Extracted Holdings & Prices'}
             </h2>
-            <p className="text-xs dark:text-slate-400 text-slate-500">
+            <p className="text-xs text-[var(--text-muted)]">
               {manualFallback
                 ? "Auto-extraction couldn't parse the screenshot. Use the raw text below as reference and add holdings manually."
                 : `Extracted ${items.length} holding${items.length === 1 ? '' : 's'}. Review screenshot prices, resolve any live market mismatches, and confirm additions.`
@@ -561,16 +564,16 @@ export const ExtractionReviewModal = ({
           </div>
 
           {/* Header Controls: Currency Pill & Destination Wallet */}
-          <div className="flex flex-wrap items-center gap-2 self-start sm:self-center mr-10 sm:mr-12">
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-center mr-8 sm:mr-10">
             {/* Currency Preference Selector */}
-            <div className="flex items-center dark:bg-slate-900 bg-slate-200/80 p-0.5 rounded-xl border dark:border-slate-800 border-slate-300">
+            <div className="flex items-center bg-[var(--shell-bg)] p-0.5 rounded-xl border border-[var(--card-border)]">
               <button
                 type="button"
                 onClick={() => setCurrencyPreference('INR')}
-                className={`px-2.5 py-1 text-xs font-extrabold rounded-lg transition cursor-pointer ${
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
                   currencyPreference === 'INR'
-                    ? 'bg-cyan-500 text-slate-950 shadow-xs'
-                    : 'dark:text-slate-400 text-slate-600 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-[var(--seg-active-bg)] text-[var(--seg-active-text)] shadow-xs'
+                    : 'text-[var(--seg-text)] hover:text-[var(--seg-active-text)]'
                 }`}
                 title="Format prices in Indian Rupee (₹)"
               >
@@ -579,10 +582,10 @@ export const ExtractionReviewModal = ({
               <button
                 type="button"
                 onClick={() => setCurrencyPreference('USD')}
-                className={`px-2.5 py-1 text-xs font-extrabold rounded-lg transition cursor-pointer ${
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
                   currencyPreference === 'USD'
-                    ? 'bg-cyan-500 text-slate-950 shadow-xs'
-                    : 'dark:text-slate-400 text-slate-600 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-[var(--seg-active-bg)] text-[var(--seg-active-text)] shadow-xs'
+                    : 'text-[var(--seg-text)] hover:text-[var(--seg-active-text)]'
                 }`}
                 title="Format prices in US Dollar ($)"
               >
@@ -592,20 +595,20 @@ export const ExtractionReviewModal = ({
 
             {/* Destination Wallet Selector */}
             {wallets && wallets.length > 0 && (
-              <div className="flex items-center space-x-2 bg-cyan-500/10 dark:bg-cyan-500/15 border border-cyan-500/30 rounded-xl px-3 py-1.5 shadow-xs">
-                <Wallet className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
+              <div className="flex items-center space-x-2 bg-[var(--shell-bg)] border border-[var(--card-border)] rounded-xl px-3 py-1.5 shadow-xs">
+                <Wallet className="w-4 h-4 text-[var(--text-secondary)] shrink-0" />
                 <div className="flex flex-col">
-                  <span className="text-[9px] font-bold text-cyan-700 dark:text-cyan-300 uppercase tracking-wider">
+                  <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
                     Target Wallet
                   </span>
                   <select
                     value={selectedWalletId}
                     onChange={(e) => setSelectedWalletId(e.target.value)}
-                    className="bg-transparent text-xs font-extrabold dark:text-white text-slate-900 border-none outline-none cursor-pointer p-0 pr-1"
+                    className="bg-transparent text-xs font-bold text-[var(--text-primary)] border-none outline-none cursor-pointer p-0 pr-1"
                   >
-                    <option value="" className="dark:bg-slate-900 bg-white">None (Unassigned Portfolio)</option>
+                    <option value="" className="bg-[var(--panel-bg)] text-[var(--text-primary)]">None (Unassigned Portfolio)</option>
                     {wallets.map((w) => (
-                      <option key={w._id} value={w._id} className="dark:bg-slate-900 bg-white">
+                      <option key={w._id} value={w._id} className="bg-[var(--panel-bg)] text-[var(--text-primary)]">
                         {w.name} ({w.type})
                       </option>
                     ))}
@@ -618,12 +621,12 @@ export const ExtractionReviewModal = ({
 
         {/* Permanent Bulk Price Strategy Toolbar */}
         {!manualFallback && items.length > 0 && (
-          <div className="mb-2.5 p-3 rounded-xl dark:bg-slate-900/90 bg-slate-100 border dark:border-slate-800 border-slate-300 flex flex-wrap items-center justify-between gap-2.5 text-xs shadow-xs">
+          <div className="mb-2.5 p-3 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] flex flex-wrap items-center justify-between gap-2.5 text-xs shadow-xs">
             <div className="flex items-center space-x-2">
-              <span className="font-bold text-slate-800 dark:text-slate-200">
+              <span className="font-semibold text-[var(--text-primary)]">
                 Bulk Price Strategy ({items.length} items):
               </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
+              <span className="text-[11px] text-[var(--text-muted)] hidden sm:inline">
                 Set all holdings to screenshot prices or live market quotes
               </span>
             </div>
@@ -632,7 +635,7 @@ export const ExtractionReviewModal = ({
               <button
                 type="button"
                 onClick={() => handleBulkSetStrategy('screenshot')}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 font-bold text-xs transition cursor-pointer border border-amber-500/30"
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[var(--warning-bg)] border border-[var(--warning)]/20 text-[var(--warning)] font-semibold text-xs transition cursor-pointer hover:opacity-90"
                 title="Use extracted screenshot price for all holdings"
               >
                 <span>🔒 All Screenshot Prices</span>
@@ -641,7 +644,7 @@ export const ExtractionReviewModal = ({
               <button
                 type="button"
                 onClick={() => handleBulkSetStrategy('live')}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 font-bold text-xs transition cursor-pointer border border-cyan-500/30"
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-primary)] font-semibold text-xs transition cursor-pointer hover:bg-[var(--shell-bg)]"
                 title="Use live API quotes for all holdings"
               >
                 <span>⚡ All Live Market Prices</span>
@@ -651,21 +654,21 @@ export const ExtractionReviewModal = ({
                 type="button"
                 onClick={() => fetchQuotes(items.length ? items : extractedItems)}
                 disabled={loadingPrices}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg dark:bg-slate-800 bg-white hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition cursor-pointer border dark:border-slate-700 border-slate-300 disabled:opacity-50"
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)] font-medium text-xs transition cursor-pointer disabled:opacity-50"
                 title="Re-query live market prices from Yahoo Finance and MFapi"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${loadingPrices ? 'animate-spin text-cyan-400' : ''}`} />
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingPrices ? 'animate-spin' : ''}`} />
                 <span>{loadingPrices ? 'Fetching...' : 'Refresh Live Prices'}</span>
               </button>
 
               {/* Asset-specific quick toggles */}
               {items.some((i) => i.assetType === 'stock') && (
-                <div className="flex items-center pl-1 border-l dark:border-slate-800 border-slate-300 space-x-1">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Stocks:</span>
+                <div className="flex items-center pl-1.5 border-l border-[var(--divider-1)] space-x-1">
+                  <span className="text-[10px] uppercase font-bold text-[var(--text-muted)]">Stocks:</span>
                   <button
                     type="button"
                     onClick={() => handleBulkSetStrategyByAssetType('stock', 'screenshot')}
-                    className="px-2 py-1 rounded-md text-[10px] font-semibold dark:bg-slate-800 bg-white hover:bg-amber-500/20 hover:text-amber-600 transition cursor-pointer border dark:border-slate-700 border-slate-300"
+                    className="px-2 py-1 rounded-md text-[10px] font-medium bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)] transition cursor-pointer"
                     title="Set all stocks to Screenshot price"
                   >
                     🔒 Screenshot
@@ -673,7 +676,7 @@ export const ExtractionReviewModal = ({
                   <button
                     type="button"
                     onClick={() => handleBulkSetStrategyByAssetType('stock', 'live')}
-                    className="px-2 py-1 rounded-md text-[10px] font-semibold dark:bg-slate-800 bg-white hover:bg-cyan-500/20 hover:text-cyan-600 transition cursor-pointer border dark:border-slate-700 border-slate-300"
+                    className="px-2 py-1 rounded-md text-[10px] font-medium bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)] transition cursor-pointer"
                     title="Set all stocks to Live Market price"
                   >
                     ⚡ Live
@@ -682,12 +685,12 @@ export const ExtractionReviewModal = ({
               )}
 
               {items.some((i) => i.assetType === 'mutual_fund') && (
-                <div className="flex items-center pl-1 border-l dark:border-slate-800 border-slate-300 space-x-1">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">MFs:</span>
+                <div className="flex items-center pl-1.5 border-l border-[var(--divider-1)] space-x-1">
+                  <span className="text-[10px] uppercase font-bold text-[var(--text-muted)]">MFs:</span>
                   <button
                     type="button"
                     onClick={() => handleBulkSetStrategyByAssetType('mutual_fund', 'screenshot')}
-                    className="px-2 py-1 rounded-md text-[10px] font-semibold dark:bg-slate-800 bg-white hover:bg-amber-500/20 hover:text-amber-600 transition cursor-pointer border dark:border-slate-700 border-slate-300"
+                    className="px-2 py-1 rounded-md text-[10px] font-medium bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)] transition cursor-pointer"
                     title="Set all mutual funds to Screenshot price"
                   >
                     🔒 Screenshot
@@ -695,7 +698,7 @@ export const ExtractionReviewModal = ({
                   <button
                     type="button"
                     onClick={() => handleBulkSetStrategyByAssetType('mutual_fund', 'live')}
-                    className="px-2 py-1 rounded-md text-[10px] font-semibold dark:bg-slate-800 bg-white hover:bg-cyan-500/20 hover:text-cyan-600 transition cursor-pointer border dark:border-slate-700 border-slate-300"
+                    className="px-2 py-1 rounded-md text-[10px] font-medium bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)] transition cursor-pointer"
                     title="Set all mutual funds to Live Market price"
                   >
                     ⚡ Live
@@ -708,12 +711,12 @@ export const ExtractionReviewModal = ({
 
         {/* Smart Price Mismatch Alert Banner */}
         {hasMismatches && !manualFallback && (
-          <div className="mb-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 dark:bg-amber-500/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-            <div className="flex items-start space-x-2.5 text-amber-600 dark:text-amber-400">
+          <div className="mb-3 p-3.5 rounded-xl bg-[var(--warning-bg)] border border-[var(--warning)]/20 text-[var(--warning)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-start space-x-2.5">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold block">Price Discrepancy Detected</span>
-                <p className="text-[11px] dark:text-slate-400 text-slate-600 mt-0.5">
+                <p className="text-[11px] opacity-90 mt-0.5">
                   Some assets in your screenshot differ from online market quotes (common for wrapped, unlisted, or airdropped tokens). We defaulted to using your exact screenshot price to ensure accurate valuation.
                 </p>
               </div>
@@ -723,14 +726,14 @@ export const ExtractionReviewModal = ({
               <button
                 type="button"
                 onClick={() => handleBulkSetStrategy('screenshot')}
-                className="px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-700 dark:text-amber-300 font-bold text-[11px] transition cursor-pointer border border-amber-500/30"
+                className="px-2.5 py-1.5 rounded-lg bg-[var(--card-bg)] border border-[var(--warning)]/30 text-[var(--warning)] font-semibold text-[11px] transition cursor-pointer hover:bg-[var(--shell-bg)]"
               >
                 🔒 Lock All Screenshot Prices
               </button>
               <button
                 type="button"
                 onClick={() => handleBulkSetStrategy('live')}
-                className="px-2.5 py-1.5 rounded-lg dark:bg-slate-800 bg-white hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-[11px] transition cursor-pointer border dark:border-slate-700 border-slate-300"
+                className="px-2.5 py-1.5 rounded-lg bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-primary)] font-medium text-[11px] transition cursor-pointer hover:bg-[var(--shell-bg)]"
               >
                 ⚡ Use All Live Quotes
               </button>
@@ -741,12 +744,12 @@ export const ExtractionReviewModal = ({
         {/* Manual Fallback: Raw OCR Text Block */}
         {manualFallback && rawText && (
           <div className="mb-4 space-y-2">
-            <div className="flex items-center space-x-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-semibold">
+            <div className="flex items-center space-x-2 p-3 rounded-xl bg-[var(--warning-bg)] border border-[var(--warning)]/20 text-[var(--warning)] text-xs font-semibold">
               <AlertTriangle className="w-4 h-4 flex-shrink-0" />
               <span>We couldn't auto-extract this screenshot. Here's the text we found — please reference it while filling in holdings below.</span>
             </div>
-            <div className="max-h-40 overflow-y-auto p-3 rounded-xl dark:bg-slate-950 bg-slate-100 border dark:border-slate-800 border-slate-200 shadow-inner">
-              <pre className="text-xs font-mono dark:text-slate-300 text-slate-700 whitespace-pre-wrap break-words leading-relaxed">
+            <div className="max-h-40 overflow-y-auto p-3 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] shadow-inner">
+              <pre className="text-xs font-mono text-[var(--text-secondary)] whitespace-pre-wrap break-words leading-relaxed">
                 {rawText}
               </pre>
             </div>
@@ -754,29 +757,29 @@ export const ExtractionReviewModal = ({
         )}
 
         {error && (
-          <div className="mb-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 dark:text-rose-400 text-xs font-semibold">
+          <div className="mb-3 p-3 rounded-xl bg-[var(--negative-bg)] border border-[var(--negative)]/20 text-[var(--negative)] text-xs font-medium">
             {error}
           </div>
         )}
 
         {/* Review Table */}
-        <div className="overflow-y-auto flex-1 my-1 border dark:border-slate-800 border-slate-200 rounded-xl dark:bg-slate-900/60 bg-white shadow-xs">
-          <table className="w-full text-left text-xs dark:text-slate-300 text-slate-700">
-            <thead className="dark:bg-slate-900 bg-slate-100 sticky top-0 uppercase font-semibold dark:text-slate-400 text-slate-600 border-b dark:border-slate-800 border-slate-200 select-none z-10">
+        <div className="overflow-y-auto flex-1 my-1 border border-[var(--card-border)] rounded-xl bg-[var(--card-bg)] shadow-xs">
+          <table className="w-full text-left text-xs text-[var(--text-primary)]">
+            <thead className="bg-[var(--shell-bg)] sticky top-0 uppercase font-semibold text-[var(--text-muted)] border-b border-[var(--divider-1)] select-none z-10 text-[11px] tracking-wider">
               <tr>
-                <th onClick={() => handleSort('assetType')} className="p-3 cursor-pointer dark:hover:text-white hover:text-slate-900 transition group">
+                <th onClick={() => handleSort('assetType')} className="p-3 cursor-pointer hover:text-[var(--text-primary)] transition group">
                   <span>Type</span>
                   {renderSortIndicator('assetType')}
                 </th>
-                <th onClick={() => handleSort('symbol')} className="p-3 cursor-pointer dark:hover:text-white hover:text-slate-900 transition group">
+                <th onClick={() => handleSort('symbol')} className="p-3 cursor-pointer hover:text-[var(--text-primary)] transition group">
                   <span>Symbol</span>
                   {renderSortIndicator('symbol')}
                 </th>
-                <th onClick={() => handleSort('quantity')} className="p-3 text-right cursor-pointer dark:hover:text-white hover:text-slate-900 transition group">
+                <th onClick={() => handleSort('quantity')} className="p-3 text-right cursor-pointer hover:text-[var(--text-primary)] transition group">
                   <span>Quantity</span>
                   {renderSortIndicator('quantity')}
                 </th>
-                <th onClick={() => handleSort('extractedPrice')} className="p-3 text-right cursor-pointer dark:hover:text-white hover:text-slate-900 transition group">
+                <th onClick={() => handleSort('extractedPrice')} className="p-3 text-right cursor-pointer hover:text-[var(--text-primary)] transition group">
                   <span>Screenshot Price</span>
                   {renderSortIndicator('extractedPrice')}
                 </th>
@@ -794,19 +797,19 @@ export const ExtractionReviewModal = ({
                         }
                       }}
                       defaultValue=""
-                      className="text-[10px] py-0.5 px-1.5 rounded font-bold uppercase bg-slate-200 dark:bg-slate-800 dark:text-cyan-400 text-cyan-600 border dark:border-slate-700 border-slate-300 cursor-pointer outline-none"
+                      className="text-[10px] py-0.5 px-1.5 rounded font-bold uppercase bg-[var(--shell-bg)] text-[var(--text-secondary)] border border-[var(--card-border)] cursor-pointer outline-none"
                       title="Apply price strategy to all holdings"
                     >
-                      <option value="" disabled className="dark:bg-slate-900 bg-white text-slate-400">All ▾</option>
-                      <option value="screenshot" className="dark:bg-slate-900 bg-white text-slate-900 dark:text-white">All Screenshot</option>
-                      <option value="live" className="dark:bg-slate-900 bg-white text-slate-900 dark:text-white">All Live Quotes</option>
+                      <option value="" disabled className="bg-[var(--panel-bg)] text-[var(--text-muted)]">All ▾</option>
+                      <option value="screenshot" className="bg-[var(--panel-bg)] text-[var(--text-primary)]">All Screenshot</option>
+                      <option value="live" className="bg-[var(--panel-bg)] text-[var(--text-primary)]">All Live Quotes</option>
                     </select>
                   </div>
                 </th>
                 <th className="p-3 text-center">Remove</th>
               </tr>
             </thead>
-            <tbody className="divide-y dark:divide-slate-800 divide-slate-200">
+            <tbody className="divide-y border-[var(--divider-2)]">
               {sortedItems.map((item) => {
                 const analysis = getItemPriceAnalysis(item);
                 const hasExtractedPrice = item.extractedPrice !== null && item.extractedPrice !== undefined;
@@ -814,10 +817,8 @@ export const ExtractionReviewModal = ({
                 return (
                   <tr
                     key={item.tempId}
-                    className={`transition ${
-                      analysis.isMismatch
-                        ? 'dark:bg-amber-500/5 bg-amber-50/50 hover:bg-amber-500/10'
-                        : 'dark:hover:bg-slate-800/50 hover:bg-slate-50'
+                    className={`transition hover:bg-[var(--shell-bg)] ${
+                      analysis.isMismatch ? 'bg-[var(--warning-bg)]/30' : ''
                     }`}
                   >
                     {/* Asset Type Selector */}
@@ -825,12 +826,12 @@ export const ExtractionReviewModal = ({
                       <select
                         value={item.assetType}
                         onChange={(e) => handleFieldChange(item.tempId, 'assetType', e.target.value)}
-                        className="glass-input rounded-lg px-2 py-1 text-xs dark:bg-slate-900 bg-white dark:border-slate-700 border-slate-300 dark:text-white text-slate-900"
+                        className="rounded-lg px-2 py-1 text-xs bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]"
                       >
-                        <option value="stock">Stock / ETF</option>
-                        <option value="mutual_fund">Mutual Fund</option>
-                        <option value="crypto">Crypto</option>
-                        <option value="cash">Cash</option>
+                        <option value="stock" className="bg-[var(--panel-bg)]">Stock / ETF</option>
+                        <option value="mutual_fund" className="bg-[var(--panel-bg)]">Mutual Fund</option>
+                        <option value="crypto" className="bg-[var(--panel-bg)]">Crypto</option>
+                        <option value="cash" className="bg-[var(--panel-bg)]">Cash</option>
                       </select>
                     </td>
 
@@ -841,7 +842,7 @@ export const ExtractionReviewModal = ({
                         value={item.symbol}
                         onChange={(e) => handleFieldChange(item.tempId, 'symbol', e.target.value)}
                         placeholder="BTC"
-                        className="w-16 glass-input rounded-lg px-2 py-1 text-xs font-mono font-bold uppercase text-cyan-600 dark:text-cyan-300"
+                        className="w-20 rounded-lg px-2 py-1 text-xs font-mono font-bold uppercase bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]"
                       />
                     </td>
 
@@ -853,7 +854,7 @@ export const ExtractionReviewModal = ({
                         value={item.quantity}
                         onChange={(e) => handleFieldChange(item.tempId, 'quantity', e.target.value)}
                         placeholder="0.00"
-                        className="w-20 glass-input rounded-lg px-2 py-1 text-xs font-mono text-right"
+                        className="w-24 rounded-lg px-2 py-1 text-xs font-mono text-right bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]"
                       />
                     </td>
 
@@ -861,42 +862,42 @@ export const ExtractionReviewModal = ({
                     <td className="p-2 text-right font-mono">
                       {hasExtractedPrice ? (
                         <div>
-                          <span className="font-bold dark:text-slate-200 text-slate-800 block">
+                          <span className="font-semibold text-[var(--text-primary)] block">
                             {fmtCurrency(item.extractedPrice, item)}
                           </span>
                           {item.totalValue ? (
-                            <span className="text-[10px] text-slate-400 block">
+                            <span className="text-[10px] text-[var(--text-muted)] block">
                               Total: {fmtCurrency(item.totalValue, item)}
                             </span>
                           ) : null}
                         </div>
                       ) : (
-                        <span className="text-[11px] text-slate-400 italic">—</span>
+                        <span className="text-[11px] text-[var(--text-muted)] italic">—</span>
                       )}
                     </td>
 
                     {/* Live Market Price from API */}
                     <td className="p-2 text-right font-mono">
                       {item.assetType === 'cash' ? (
-                        <span className="dark:text-slate-300 text-slate-700 font-semibold">
+                        <span className="text-[var(--text-primary)] font-medium">
                           {currencyPreference === 'INR' ? '₹1.00' : '$1.00'}
                         </span>
                       ) : loadingPrices ? (
-                        <span className="text-slate-400 text-[11px] inline-flex items-center gap-1">
-                          <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />
+                        <span className="text-[var(--text-muted)] text-[11px] inline-flex items-center gap-1">
+                          <Loader2 className="w-3 h-3 animate-spin text-[var(--text-secondary)]" />
                           <span>Fetching...</span>
                         </span>
                       ) : (
                         <div>
-                          <span className="dark:text-slate-300 text-slate-700 font-semibold block">
+                          <span className="text-[var(--text-primary)] font-medium block">
                             {analysis.livePrice > 0 ? (
                               fmtCurrency(analysis.livePrice, item)
                             ) : (
-                              <span className="text-amber-500 text-[11px]">Unlisted (0)</span>
+                              <span className="text-[var(--warning)] text-[11px]">Unlisted (0)</span>
                             )}
                           </span>
                           {analysis.isMismatch && hasExtractedPrice && (
-                            <span className="text-[10px] font-bold text-amber-500 block">
+                            <span className="text-[10px] font-semibold text-[var(--warning)] block">
                               {analysis.isUnlisted ? '⚠️ Unlisted' : `⚠️ ${analysis.diffPct.toFixed(0)}% diff`}
                             </span>
                           )}
@@ -910,31 +911,31 @@ export const ExtractionReviewModal = ({
                         <select
                           value={item.priceAction || 'live'}
                           onChange={(e) => handleFieldChange(item.tempId, 'priceAction', e.target.value)}
-                          className="glass-input rounded-lg px-2 py-1 text-xs dark:bg-slate-900 bg-white dark:border-slate-700 border-slate-300 font-medium"
+                          className="rounded-lg px-2 py-1 text-xs bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] font-medium outline-none"
                         >
                           {hasExtractedPrice ? (
-                            <option value="screenshot">
+                            <option value="screenshot" className="bg-[var(--panel-bg)]">
                               🔒 Use Screenshot Price ({fmtCurrency(item.extractedPrice, item)})
                             </option>
                           ) : (
-                            <option value="screenshot" disabled>
+                            <option value="screenshot" disabled className="bg-[var(--panel-bg)]">
                               🔒 Screenshot Price (N/A)
                             </option>
                           )}
-                          <option value="live">
+                          <option value="live" className="bg-[var(--panel-bg)]">
                             ⚡ Use Live Market Quote ({analysis.livePrice > 0 ? fmtCurrency(analysis.livePrice, item) : 'Auto'})
                           </option>
-                          <option value="mapped">
+                          <option value="mapped" className="bg-[var(--panel-bg)]">
                             🔗 Map to Ticker {item.mappedSymbol ? `(${item.mappedSymbol}${analysis.livePrice > 0 ? `: ${fmtCurrency(analysis.livePrice, item)}` : ''})` : '(e.g. CANBK.NS, BTC)'}
                           </option>
-                          <option value="custom">✍️ Custom Fixed Price</option>
+                          <option value="custom" className="bg-[var(--panel-bg)]">✍️ Custom Fixed Price</option>
                         </select>
 
                         {/* Ticker Mapping Action with Inline Instant Verification + Advanced Modal */}
                         {item.priceAction === 'mapped' && (
                           <div className="flex flex-col gap-1 mt-0.5">
                             <div className="flex items-center space-x-1 flex-wrap gap-y-1">
-                              <span className="text-[10px] text-slate-400">Map to:</span>
+                              <span className="text-[10px] text-[var(--text-muted)]">Map to:</span>
                               <input
                                 type="text"
                                 value={item.mappedSymbol || ''}
@@ -951,38 +952,38 @@ export const ExtractionReviewModal = ({
                                   }
                                 }}
                                 placeholder="CANBK.NS, BTC"
-                                className="w-24 px-1.5 py-0.5 rounded text-xs uppercase font-mono font-bold border border-indigo-500/50 dark:bg-slate-950 bg-white text-indigo-600 dark:text-indigo-400"
+                                className="w-24 px-1.5 py-0.5 rounded text-xs uppercase font-mono font-bold border border-[var(--card-border)] bg-[var(--shell-bg)] text-[var(--text-primary)] outline-none"
                               />
                               <button
                                 type="button"
                                 onClick={() => handleVerifyTicker(item.tempId, item.mappedSymbol || item.symbol)}
                                 disabled={verifyingTicker.has(item.tempId)}
-                                className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-700 dark:text-indigo-300 border border-indigo-500/40 transition cursor-pointer shrink-0 flex items-center space-x-1 disabled:opacity-50"
+                                className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[var(--card-bg)] hover:bg-[var(--shell-bg)] text-[var(--text-secondary)] border border-[var(--card-border)] transition cursor-pointer shrink-0 flex items-center space-x-1 disabled:opacity-50"
                                 title="Fetch and verify price from live API"
                               >
                                 {verifyingTicker.has(item.tempId) ? (
                                   <Loader2 className="w-2.5 h-2.5 animate-spin" />
                                 ) : (
-                                  <Zap className="w-2.5 h-2.5" />
+                                  <Zap className="w-2.5 h-2.5 text-[var(--text-primary)]" />
                                 )}
                                 <span>{verifyingTicker.has(item.tempId) ? 'Verifying...' : 'Verify Live'}</span>
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setMappingModalItem(item)}
-                                className="px-1.5 py-0.5 rounded text-[10px] text-slate-400 hover:text-slate-200 bg-slate-800/40 hover:bg-slate-800 border border-slate-700/50 transition cursor-pointer shrink-0"
+                                className="px-1.5 py-0.5 rounded text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--card-bg)] hover:bg-[var(--shell-bg)] border border-[var(--card-border)] transition cursor-pointer shrink-0"
                                 title="Search mutual fund schemes and variants"
                               >
                                 Search
                               </button>
                             </div>
                             {verifiedPrices[item.tempId] ? (
-                              <div className="flex items-center space-x-1 text-[10px] text-emerald-500 font-mono font-semibold">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                              <div className="flex items-center space-x-1 text-[10px] text-[var(--positive)] font-mono font-medium">
+                                <CheckCircle2 className="w-3 h-3 text-[var(--positive)] shrink-0" />
                                 <span>Target: {verifiedPrices[item.tempId].ticker} ({fmtCurrency(verifiedPrices[item.tempId].numericPrice || verifiedPrices[item.tempId].price, item)})</span>
                               </div>
                             ) : item.mappedSymbol ? (
-                              <span className="text-[10px] text-indigo-400 font-mono">
+                              <span className="text-[10px] text-[var(--text-secondary)] font-mono">
                                 Target: {item.mappedSymbol} (click Verify Live or press Enter)
                               </span>
                             ) : null}
@@ -997,7 +998,7 @@ export const ExtractionReviewModal = ({
                                 type="button"
                                 onClick={() => handleVerifyTicker(item.tempId, item.mappedSymbol || item.symbol)}
                                 disabled={verifyingTicker.has(item.tempId)}
-                                className="px-2 py-1 rounded text-[10px] font-bold bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 transition cursor-pointer flex items-center space-x-1 disabled:opacity-50"
+                                className="px-2 py-1 rounded text-[10px] font-semibold bg-[var(--card-bg)] hover:bg-[var(--shell-bg)] text-[var(--text-primary)] border border-[var(--card-border)] transition cursor-pointer flex items-center space-x-1 disabled:opacity-50"
                                 title="Auto-fetch live market quote"
                               >
                                 {verifyingTicker.has(item.tempId) ? (
@@ -1010,7 +1011,7 @@ export const ExtractionReviewModal = ({
                               <button
                                 type="button"
                                 onClick={() => setMappingModalItem(item)}
-                                className="px-2 py-1 rounded text-[10px] font-semibold text-slate-400 hover:text-slate-200 bg-slate-800/40 hover:bg-slate-800 border border-slate-700/50 transition cursor-pointer flex items-center space-x-1"
+                                className="px-2 py-1 rounded text-[10px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--card-bg)] hover:bg-[var(--shell-bg)] border border-[var(--card-border)] transition cursor-pointer flex items-center space-x-1"
                                 title="Open search dialog to select specific mutual fund scheme or variant"
                               >
                                 <Search className="w-2.5 h-2.5" />
@@ -1018,7 +1019,7 @@ export const ExtractionReviewModal = ({
                               </button>
                             </div>
                             {verifiedPrices[item.tempId] && (
-                              <div className="flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+                              <div className="flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[var(--positive-bg)] border border-[var(--positive)]/20 text-[var(--positive)]">
                                 <span>✅ {verifiedPrices[item.tempId].ticker}: {fmtCurrency(verifiedPrices[item.tempId].numericPrice || verifiedPrices[item.tempId].price, item)} — mapped!</span>
                               </div>
                             )}
@@ -1028,14 +1029,14 @@ export const ExtractionReviewModal = ({
                         {/* Inline Custom Price Input */}
                         {item.priceAction === 'custom' && (
                           <div className="flex items-center space-x-1 mt-0.5">
-                            <span className="text-[10px] text-slate-400">{currencyPreference === 'INR' ? '₹' : '$'}</span>
+                            <span className="text-[10px] text-[var(--text-muted)]">{currencyPreference === 'INR' ? '₹' : '$'}</span>
                             <input
                               type="number"
                               step="any"
                               value={item.customPrice !== undefined ? item.customPrice : ''}
                               onChange={(e) => handleFieldChange(item.tempId, 'customPrice', e.target.value)}
                               placeholder="0.00"
-                              className="w-20 px-1.5 py-0.5 rounded text-xs font-mono border border-cyan-500/50 dark:bg-slate-950 bg-white text-cyan-600 dark:text-cyan-400"
+                              className="w-20 px-1.5 py-0.5 rounded text-xs font-mono border border-[var(--card-border)] bg-[var(--shell-bg)] text-[var(--text-primary)] outline-none"
                             />
                           </div>
                         )}
@@ -1047,7 +1048,8 @@ export const ExtractionReviewModal = ({
                       <button
                         type="button"
                         onClick={() => handleRemoveRow(item.tempId)}
-                        className="p-1 rounded hover:bg-rose-500/20 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition cursor-pointer"
+                        className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--negative)] hover:bg-[var(--negative-bg)] transition cursor-pointer"
+                        title="Remove holding row"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -1060,13 +1062,13 @@ export const ExtractionReviewModal = ({
         </div>
 
         {/* Modal Controls */}
-        <div className="pt-3 border-t dark:border-slate-800 border-slate-200 flex items-center justify-between">
+        <div className="pt-3 border-t border-[var(--divider-1)] flex items-center justify-between">
           <button
             type="button"
             onClick={handleAddEmptyRow}
-            className="flex items-center space-x-1 px-3 py-2 rounded-xl dark:bg-slate-800 bg-slate-100 dark:hover:bg-slate-700 hover:bg-slate-200 border dark:border-slate-700 border-slate-300 dark:text-slate-300 text-slate-700 text-xs font-semibold transition cursor-pointer shadow-xs"
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-[var(--shell-bg)] hover:bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-primary)] text-xs font-medium transition cursor-pointer shadow-xs"
           >
-            <Plus className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+            <Plus className="w-4 h-4 text-[var(--text-primary)]" />
             <span>Add Row</span>
           </button>
 
@@ -1075,7 +1077,7 @@ export const ExtractionReviewModal = ({
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="px-4 py-2.5 rounded-xl border dark:border-slate-700 border-slate-300 dark:hover:bg-slate-800 hover:bg-slate-200 dark:text-slate-300 text-slate-700 text-xs font-semibold transition cursor-pointer"
+              className="px-4 py-2 text-xs font-medium rounded-xl border border-[var(--card-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)] transition cursor-pointer"
             >
               Cancel
             </button>
@@ -1084,9 +1086,9 @@ export const ExtractionReviewModal = ({
               type="button"
               onClick={handleConfirmSave}
               disabled={saving || items.length === 0}
-              className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition cursor-pointer disabled:opacity-50"
+              className="btn-primary min-h-[38px] px-5 text-xs font-semibold rounded-xl disabled:opacity-50 transition cursor-pointer"
             >
-              <CheckCircle className="w-4 h-4" />
+              <CheckCircle className="w-4 h-4 text-[var(--btn-primary-text)]" />
               <span>{saving ? 'Saving to Portfolio...' : `Confirm & Add (${items.length}) Holdings`}</span>
             </button>
           </div>

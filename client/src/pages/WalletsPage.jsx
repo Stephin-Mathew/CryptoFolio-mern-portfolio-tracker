@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useWallets } from '../context/WalletContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { getWalletColor } from '../utils/assetColors';
-import { Wallet, Plus, Edit2, Trash2, ChevronRight, Coins, Landmark, CreditCard, Vault, Shield, IndianRupee } from 'lucide-react';
+import { Wallet, Plus, Edit2, Trash2, ChevronRight, Coins, Landmark, CreditCard, Vault, Shield, IndianRupee, ArrowUpDown } from 'lucide-react';
 
 const ICON_MAP = {
   wallet: Wallet,
@@ -111,6 +111,8 @@ export const WalletsPage = ({
       });
   }, [wallets, holdings, prices]);
 
+  const totalPortfolioValue = sortedWalletsWithStats.reduce((s, { stats }) => s + stats.totalValue, 0);
+
   const handleDelete = async (wallet, count) => {
     if (onDeleteWallet) {
       onDeleteWallet(wallet, count);
@@ -122,225 +124,320 @@ export const WalletsPage = ({
   // ── Render ───────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="page-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="card shimmer" style={{ height: 240 }} />
-        ))}
+      <div className="page-container" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ maxWidth: 1100, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="card shimmer" style={{ height: 56 }} />
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="page-container wallets-page" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 500, color: 'var(--text-primary)' }}>Wallets</h1>
-          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
-            {wallets.length} wallet{wallets.length !== 1 ? 's' : ''} · Manage accounts, view per-wallet metrics
-          </p>
-        </div>
-        <button className="btn-primary" onClick={onOpenAddWallet}>
-          <Plus size={15} />
-          Add Wallet
-        </button>
-      </div>
-
-      {/* Empty state */}
-      {wallets.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 16,
-              background: 'var(--neutral-chip-bg)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 16px',
-            }}
-          >
-            <Wallet size={24} color="var(--text-muted)" />
+    <div className="page-container wallets-page" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ maxWidth: 1100, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* ── Header ── */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>Wallets</h1>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+              {wallets.length} wallet{wallets.length !== 1 ? 's' : ''} · {fmt(totalPortfolioValue)} total portfolio value
+            </p>
           </div>
-          <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>
-            No Wallets Yet
-          </h3>
-          <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--text-muted)', maxWidth: 360, marginInline: 'auto' }}>
-            Create wallets for Binance, MetaMask, Ledger, Robinhood, or any account to get started.
-          </p>
-          <button className="btn-primary" onClick={onOpenAddWallet} style={{ margin: '0 auto' }}>
-            <Plus size={15} />
-            Create First Wallet
+          <button className="btn-primary" onClick={onOpenAddWallet} style={{ minHeight: 36, padding: '0 14px', fontSize: 13 }}>
+            <Plus size={14} />
+            Add Wallet
           </button>
         </div>
-      ) : (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: 16,
-          }}
-        >
-          {sortedWalletsWithStats.map(({ wallet, stats }, idx) => {
-            const IconComp = ICON_MAP[wallet.icon] || Wallet;
-            const accentColor = getWalletColor(wallet, wallets);
-            const isProfit = stats.pnl >= 0;
 
-            const cryptoPct = stats.totalValue > 0 ? (stats.cryptoVal / stats.totalValue) * 100 : 0;
-            const stockPct = stats.totalValue > 0 ? (stats.stockVal / stats.totalValue) * 100 : 0;
-            const cashPct = stats.totalValue > 0 ? (stats.cashVal / stats.totalValue) * 100 : 0;
+        {/* ── Empty state ── */}
+        {wallets.length === 0 ? (
+          <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 14,
+                background: 'var(--neutral-chip-bg)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 14px',
+              }}
+            >
+              <Wallet size={22} color="var(--text-muted)" />
+            </div>
+            <h3 style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+              No Wallets Yet
+            </h3>
+            <p style={{ margin: '0 0 18px', fontSize: 13, color: 'var(--text-muted)', maxWidth: 340, marginInline: 'auto' }}>
+              Create wallets for Binance, MetaMask, Ledger, Robinhood, or any account to get started.
+            </p>
+            <button className="btn-primary" onClick={onOpenAddWallet} style={{ margin: '0 auto' }}>
+              <Plus size={14} />
+              Create First Wallet
+            </button>
+          </div>
+        ) : (
+          /* ── Wallet list card ── */
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
 
-            return (
-              <div
-                key={wallet._id}
-                className="card"
-                style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: 0, overflow: 'hidden' }}
-              >
-                {/* Accent top bar */}
-                <div style={{ height: 4, background: accentColor }} />
+            {/* Table header */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(200px, 1.8fr) 110px 140px 140px 130px 84px',
+              gap: 0,
+              padding: '10px 16px',
+              background: 'var(--shell-bg)',
+              borderBottom: '1px solid var(--divider-1)',
+            }}>
+              {['Wallet · Assets', 'Type', 'Value · 24h P&L', 'Allocation', 'Asset Mix', ''].map((h, i) => (
+                <div key={i} style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  color: 'var(--text-muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '.08em',
+                  textAlign: i === 2 || i === 3 ? 'left' : i === 4 ? 'right' : 'left',
+                  paddingRight: i === 5 ? 0 : 8,
+                }}>
+                  {h}
+                </div>
+              ))}
+            </div>
 
-                <div style={{ padding: '16px 18px', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {/* Row: icon + name + actions */}
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div
-                        style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 12,
-                          background: `${accentColor}22`,
-                          border: `1px solid ${accentColor}44`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <IconComp size={18} style={{ color: accentColor }} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>{wallet.name}</div>
-                        <span className="chip chip-neutral" style={{ fontSize: 10, padding: '1px 6px', textTransform: 'uppercase', letterSpacing: '.4px' }}>
-                          {wallet.type}
-                        </span>
-                      </div>
+            {/* Wallet rows */}
+            {sortedWalletsWithStats.map(({ wallet, stats }, idx) => {
+              const IconComp = ICON_MAP[wallet.icon] || Wallet;
+              const accentColor = getWalletColor(wallet, wallets);
+              const isProfit = stats.pnl >= 0;
+
+              const cryptoPct = stats.totalValue > 0 ? (stats.cryptoVal / stats.totalValue) * 100 : 0;
+              const stockPct = stats.totalValue > 0 ? (stats.stockVal / stats.totalValue) * 100 : 0;
+              const cashPct = stats.totalValue > 0 ? (stats.cashVal / stats.totalValue) * 100 : 0;
+              const walletShare = totalPortfolioValue > 0 ? (stats.totalValue / totalPortfolioValue) * 100 : 0;
+
+              return (
+                <div
+                  key={wallet._id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(200px, 1.8fr) 110px 140px 140px 130px 84px',
+                    gap: 0,
+                    padding: '0 16px',
+                    borderBottom: idx < sortedWalletsWithStats.length - 1 ? '1px solid var(--divider-2)' : 'none',
+                    alignItems: 'center',
+                    minHeight: 64,
+                    transition: 'background 0.12s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--shell-bg)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  {/* Col 1: Avatar circle + Name + Assets count */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, paddingRight: 8 }}>
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: '50%',
+                        background: `${accentColor}18`,
+                        border: `1.5px solid ${accentColor}40`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: accentColor,
+                      }}
+                    >
+                      <IconComp size={16} style={{ color: accentColor }} />
                     </div>
 
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button
-                        onClick={() => onOpenEditWallet(wallet)}
-                        title="Edit wallet"
+                    <div style={{ minWidth: 0 }}>
+                      <Link
+                        to={`/wallets/${wallet._id}`}
                         style={{
-                          width: 32, height: 32, borderRadius: 8,
-                          border: '1px solid var(--card-border)',
-                          background: 'var(--shell-bg)',
-                          cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: 'var(--text-muted)',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--card-border)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--shell-bg)'; }}
-                      >
-                        <Edit2 size={13} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(wallet, stats.count)}
-                        title="Delete wallet"
-                        style={{
-                          width: 32, height: 32, borderRadius: 8,
-                          border: '1px solid var(--negative-bg)',
-                          background: 'var(--negative-bg)',
-                          cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: 'var(--negative)',
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: 'var(--text-primary)',
+                          textDecoration: 'none',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: 'block',
                         }}
                       >
-                        <Trash2 size={13} />
-                      </button>
+                        {wallet.name}
+                      </Link>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1, fontVariantNumeric: 'tabular-nums' }}>
+                        {stats.count} asset{stats.count !== 1 ? 's' : ''}
+                        {wallet.description && (
+                          <span style={{ marginLeft: 5, opacity: 0.75 }}>· {wallet.description.length > 24 ? wallet.description.slice(0, 24) + '…' : wallet.description}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Description */}
-                  {wallet.description && (
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5, WebkitLineClamp: 2, overflow: 'hidden', display: '-webkit-box', WebkitBoxOrient: 'vertical' }}>
-                      {wallet.description}
-                    </p>
-                  )}
+                  {/* Col 2: Type chip */}
+                  <div>
+                    <span
+                      className="chip chip-neutral"
+                      style={{
+                        fontSize: 11,
+                        padding: '2px 8px',
+                        textTransform: 'capitalize',
+                        letterSpacing: '.3px',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {wallet.type}
+                    </span>
+                  </div>
 
-                  {/* Valuation block */}
-                  <div
-                    style={{
-                      background: 'var(--shell-bg)',
-                      border: '1px solid var(--card-border)',
-                      borderRadius: 12,
-                      padding: '12px 14px',
-                    }}
-                  >
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
-                      {wallet.type === 'cash' ? 'Total Cash Balance' : 'Total Valuation'}
-                    </div>
-                    <div style={{ fontSize: 22, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+                  {/* Col 3: Value + 24h P&L */}
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
                       {fmt(stats.totalValue)}
                     </div>
-                    {stats.count > 0 && wallet.type !== 'cash' && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 6 }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Today's P&L</span>
-                        <span style={{ fontWeight: 500, color: isProfit ? 'var(--positive)' : 'var(--negative)' }}>
-                          {isProfit ? '+' : ''}{stats.pnlPct.toFixed(2)}%
-                        </span>
+                    {stats.count > 0 && wallet.type !== 'cash' ? (
+                      <div
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 500,
+                          marginTop: 2,
+                          fontVariantNumeric: 'tabular-nums',
+                          color: isProfit ? 'var(--positive, #10B981)' : 'var(--negative, #EF4444)',
+                        }}
+                      >
+                        {isProfit ? '+' : ''}{fmt(stats.pnl)} ({isProfit ? '+' : ''}{stats.pnlPct.toFixed(2)}%)
                       </div>
-                    )}
-                    {wallet.type === 'cash' && stats.count > 0 && (
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                        {stats.count} cash entr{stats.count === 1 ? 'y' : 'ies'}
-                      </div>
+                    ) : (
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>—</div>
                     )}
                   </div>
 
-                  {/* Asset mix bar */}
-                  {stats.totalValue > 0 && (
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: 5 }}>
-                        <span>Asset Mix</span>
-                        <span style={{ fontWeight: 500 }}>{stats.count} assets</span>
+                  {/* Col 4: Allocation Capsule Bar */}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ flex: 1, minWidth: 50, maxWidth: 80 }}>
+                        <div style={{ height: 7, borderRadius: 9999, background: 'var(--wallet-track, #F1F5F9)', overflow: 'hidden' }}>
+                          <div
+                            style={{
+                              height: '100%',
+                              width: `${Math.min(walletShare, 100)}%`,
+                              borderRadius: 9999,
+                              background: accentColor,
+                              transition: 'width 0.3s ease',
+                            }}
+                          />
+                        </div>
                       </div>
-                      <div style={{ height: 6, borderRadius: 3, overflow: 'hidden', background: 'var(--wallet-track, #EEEFF2)', display: 'flex' }}>
-                        {cryptoPct > 0 && <div style={{ flex: cryptoPct, background: '#2DD4BF', minWidth: 2 }} title={`Crypto ${cryptoPct.toFixed(0)}%`} />}
-                        {stockPct > 0 && <div style={{ flex: stockPct, background: '#818CF8', minWidth: 2 }} title={`Stocks ${stockPct.toFixed(0)}%`} />}
-                        {cashPct > 0 && <div style={{ flex: cashPct, background: '#A3E635', minWidth: 2 }} title={`Cash ${cashPct.toFixed(0)}%`} />}
-                      </div>
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
+                        {walletShare.toFixed(1)}%
+                      </span>
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                {/* Footer link */}
-                <Link
-                  to={`/wallets/${wallet._id}`}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 18px',
-                    borderTop: '1px solid var(--divider-2)',
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: 'var(--text-primary)',
-                    textDecoration: 'none',
-                    background: 'var(--shell-bg)',
-                    transition: 'background 0.15s',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--card-border)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--shell-bg)'; }}
-                >
-                  <span>View wallet</span>
-                  <ChevronRight size={14} color="var(--text-muted)" />
-                </Link>
+                  {/* Col 5: Asset mix mini-bar */}
+                  <div style={{ textAlign: 'right' }}>
+                    {stats.totalValue > 0 ? (
+                      <>
+                        <div style={{ height: 5, borderRadius: 9999, overflow: 'hidden', background: 'var(--wallet-track, #F1F5F9)', display: 'flex', marginBottom: 4 }}>
+                          {cryptoPct > 0 && <div style={{ flex: cryptoPct, background: '#2DD4BF', minWidth: 2 }} title={`Crypto ${cryptoPct.toFixed(0)}%`} />}
+                          {stockPct > 0 && <div style={{ flex: stockPct, background: '#818CF8', minWidth: 2 }} title={`Stocks ${stockPct.toFixed(0)}%`} />}
+                          {cashPct > 0 && <div style={{ flex: cashPct, background: '#A3E635', minWidth: 2 }} title={`Cash ${cashPct.toFixed(0)}%`} />}
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', fontSize: 10, fontWeight: 600 }}>
+                          {cryptoPct > 0 && <span style={{ color: '#2DD4BF' }}>C {cryptoPct.toFixed(0)}%</span>}
+                          {stockPct > 0 && <span style={{ color: '#818CF8' }}>S {stockPct.toFixed(0)}%</span>}
+                          {cashPct > 0 && <span style={{ color: '#8BC34A' }}>$ {cashPct.toFixed(0)}%</span>}
+                        </div>
+                      </>
+                    ) : (
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
+                    )}
+                  </div>
+
+                  {/* Col 6: Actions */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                    <Link
+                      to={`/wallets/${wallet._id}`}
+                      title="View wallet"
+                      style={{
+                        width: 28, height: 28, borderRadius: 7,
+                        border: '1px solid var(--card-border)',
+                        background: 'var(--shell-bg)',
+                        cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'var(--text-muted)',
+                        textDecoration: 'none',
+                        flexShrink: 0,
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--card-border)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--shell-bg)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+                    >
+                      <ChevronRight size={13} />
+                    </Link>
+                    <button
+                      onClick={() => onOpenEditWallet(wallet)}
+                      title="Edit wallet"
+                      style={{
+                        width: 28, height: 28, borderRadius: 7,
+                        border: '1px solid var(--card-border)',
+                        background: 'var(--shell-bg)',
+                        cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'var(--text-muted)',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--card-border)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--shell-bg)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+                    >
+                      <Edit2 size={12} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(wallet, stats.count)}
+                      title="Delete wallet"
+                      style={{
+                        width: 28, height: 28, borderRadius: 7,
+                        border: '1px solid var(--negative-bg)',
+                        background: 'var(--negative-bg)',
+                        cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'var(--negative)',
+                      }}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Footer summary row */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(200px, 1.8fr) 110px 140px 140px 130px 84px',
+              gap: 0,
+              padding: '10px 16px',
+              background: 'var(--shell-bg)',
+              borderTop: '1px solid var(--divider-1)',
+            }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>
+                {wallets.length} wallet{wallets.length !== 1 ? 's' : ''} · {holdings.length} total positions
               </div>
-            );
-          })}
-        </div>
-      )}
+              <div />
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                {fmt(totalPortfolioValue)}
+              </div>
+              <div />
+              <div />
+              <div />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

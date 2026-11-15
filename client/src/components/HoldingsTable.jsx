@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import {
   Edit2,
   Trash2,
-  CheckCircle,
   AlertCircle,
   Loader2,
   Coins,
@@ -18,6 +17,65 @@ import {
   Link2,
 } from 'lucide-react';
 import { PriceEditModal } from './PriceEditModal';
+import { LogoPickerModal } from './LogoPickerModal';
+import { AssetLogo } from './AssetLogo';
+import { useCurrency } from '../context/CurrencyContext';
+
+const ASSET_COLORS = { crypto: '#2DD4BF', stock: '#818CF8', cash: '#A3E635', mutual_fund: '#F59E0B' };
+
+const ALLOCATION_PALETTE = [
+  '#0D9488', // teal (like HYPE in reference)
+  '#3B82F6', // blue (like USDC in reference)
+  '#EAB308', // amber (like KNTQ in reference)
+  '#EF4444', // coral red (like BNB in reference)
+  '#8B5CF6', // violet (like ZRO in reference)
+  '#06B6D4', // cyan (like ETH in reference)
+  '#EC4899', // pink
+  '#10B981', // emerald
+  '#6366F1', // indigo
+];
+
+function generateSparkline(change24h = 0, change7d = 0) {
+  const c24 = Number(change24h) || 0;
+  const c7 = Number(change7d) || 0;
+  const isFlat = Math.abs(c24) < 0.01 && Math.abs(c7) < 0.01;
+  const W = 88, H = 26, padX = 4, padY = 4;
+
+  if (isFlat) {
+    return {
+      points: `${padX},${(H / 2).toFixed(1)} ${(W - padX).toFixed(1)},${(H / 2).toFixed(1)}`,
+      color: '#94A3B8',
+      isFlat: true,
+    };
+  }
+
+  // Create an illustrative 6-point 7d path
+  const start = 100 / (1 + (c7 / 100));
+  const p0 = start;
+  const p1 = start + (100 - start) * 0.20 + (c7 >= 0 ? -1.5 : 1.5);
+  const p2 = start + (100 - start) * 0.50 + (c7 >= 0 ? 2.5 : -2.5);
+  const p3 = start + (100 - start) * 0.75 - (c24 * 0.15);
+  const p4 = 100 - (c24 * 0.35);
+  const p5 = 100;
+
+  const rawPts = [p0, p1, p2, p3, p4, p5];
+  const min = Math.min(...rawPts);
+  const max = Math.max(...rawPts);
+  const range = max - min || 1;
+
+  const points = rawPts.map((v, i) => {
+    const x = padX + (i / (rawPts.length - 1)) * (W - padX * 2);
+    const y = padY + ((max - v) / range) * (H - padY * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+
+  const isPositive = c7 >= 0;
+  return {
+    points,
+    color: isPositive ? '#10B981' : '#EF4444',
+    isFlat: false,
+  };
+}
 
 export const HoldingsTable = ({
   holdings,
@@ -27,15 +85,20 @@ export const HoldingsTable = ({
   onEditClick,
   onUpdatePrice,
   onResetPrice,
+  onUpdateLogo,
+  onResetLogo,
   rowStatuses = {},
   walletType,
   hideBuyPrice: hideBuyPriceProp,
   displayCurrency = 'USD',
+  showAssetBadge = false,
 }) => {
-
   // Price Edit Modal state
   const [priceModalSymbol, setPriceModalSymbol] = useState(null);
   const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
+
+  // Logo Picker Modal state: { symbol, assetType, logoUrl, isCustomLogo }
+  const [logoModalAsset, setLogoModalAsset] = useState(null);
 
   const handleOpenPriceModal = (sym) => {
     setPriceModalSymbol(sym);
@@ -56,6 +119,8 @@ export const HoldingsTable = ({
   const [sortField, setSortField] = useState('totalValue');
   const [sortDirection, setSortDirection] = useState('desc');
 
+  const { currency = 'USD', fmt, fmtPrice, fmtDelta, rates } = useCurrency();
+
   const toggleExpand = (symbol) => {
     setExpandedSymbols((prev) => ({
       ...prev,
@@ -63,7 +128,7 @@ export const HoldingsTable = ({
     }));
   };
 
-  // Determine if Buy Price column should be shown (e.g. hidden in crypto wallets or when no stocks exist)
+  // Determine if Buy Price column should be shown
   const showBuyPrice = useMemo(() => {
     if (hideBuyPriceProp !== undefined) {
       return !hideBuyPriceProp;
@@ -84,7 +149,6 @@ export const HoldingsTable = ({
     }
   };
 
-  // Helper to extract clean price, currency, and percentage changes
   const getPriceInfo = (symbol, assetType) => {
     if (assetType === 'cash') {
       const isCashInr = symbol === 'INR';
@@ -105,13 +169,13 @@ export const HoldingsTable = ({
       change30d: Number(entry.change30d || 0),
       mappedSymbol: entry.mappedSymbol || null,
       isCustom: !!entry.isCustom,
+      logoUrl: entry.logoUrl || null,
+      isCustomLogo: !!entry.isCustomLogo,
     };
   };
 
-  const targetCurrency = displayCurrency === 'INR' ? 'INR' : 'USD';
   const inrRate = Number(prices.INR?.price || prices.INR?.rate || 95.7);
 
-  // Group holdings by Symbol for aggregated single-ticker overview
   const groupedHoldings = useMemo(() => {
     const map = {};
 
@@ -140,10 +204,10 @@ export const HoldingsTable = ({
 
       const nativeLivePrice =
         group.assetType === 'cash'
-          ? 1
+          ? (group.symbol === 'INR' && inrRate > 0 ? 1 / inrRate : 1)
           : isINR
-          ? (priceInfo.priceInr ?? priceInfo.navInr ?? (priceInfo.price > 0 ? priceInfo.price * inrRate : 0))
-          : priceInfo.price;
+            ? (priceInfo.priceInr ?? priceInfo.navInr ?? (priceInfo.price > 0 ? priceInfo.price * inrRate : 0))
+            : priceInfo.price;
       const livePrice = nativeLivePrice > 0 ? nativeLivePrice : (group.items[0]?.avgBuyPrice || 0);
 
       let totalQuantity = 0;
@@ -163,54 +227,30 @@ export const HoldingsTable = ({
           : null;
       const totalValue = totalQuantity * livePrice;
 
-      // PnL Computation in native currency:
       let pnl = 0;
       let pnlPercent = 0;
 
       if (group.assetType === 'stock' || group.assetType === 'mutual_fund') {
-        // Stock/MF PnL is based on Cost Basis vs Live Price
         pnl = totalValue - totalStockCost;
         pnlPercent = totalStockCost > 0 ? (pnl / totalStockCost) * 100 : 0;
       } else if (group.assetType === 'crypto') {
-        // Crypto PnL is based on Timeframe Period Movement (Yesterday/24h, Last Week/7d, 30d)
         const changePct =
           cryptoTimeframe === '7d'
             ? priceInfo.change7d
             : cryptoTimeframe === '30d'
-            ? priceInfo.change30d
-            : priceInfo.change24h;
+              ? priceInfo.change30d
+              : priceInfo.change24h;
 
         const startPrice = livePrice / (1 + changePct / 100);
         pnl = totalQuantity * (livePrice - startPrice);
         pnlPercent = changePct;
       }
 
-      // Convert to display currency:
-      // Default 'USD': convert INR stocks/MFs to USD
-      // Click 'INR': convert USD crypto to INR
-      let displayLivePrice = livePrice;
-      let displayBuyPrice = weightedAvgBuyPrice;
-      let displayTotalValue = totalValue;
-      let displayPnl = pnl;
-      let isConverted = false;
-
-      if (targetCurrency === 'USD') {
-        if (isINR && inrRate > 0) {
-          displayLivePrice = livePrice / inrRate;
-          displayBuyPrice = weightedAvgBuyPrice !== null ? weightedAvgBuyPrice / inrRate : null;
-          displayTotalValue = totalValue / inrRate;
-          displayPnl = pnl / inrRate;
-          isConverted = true;
-        }
-      } else if (targetCurrency === 'INR') {
-        if (!isINR) {
-          displayLivePrice = livePrice * inrRate;
-          displayBuyPrice = weightedAvgBuyPrice !== null ? weightedAvgBuyPrice * inrRate : null;
-          displayTotalValue = totalValue * inrRate;
-          displayPnl = pnl * inrRate;
-          isConverted = true;
-        }
-      }
+      // Normalized USD values for multi-currency formatting
+      const usdLivePrice = isINR && inrRate > 0 ? livePrice / inrRate : livePrice;
+      const usdBuyPrice = isINR && inrRate > 0 && weightedAvgBuyPrice !== null ? weightedAvgBuyPrice / inrRate : weightedAvgBuyPrice;
+      const usdTotalValue = isINR && inrRate > 0 ? totalValue / inrRate : totalValue;
+      const usdPnl = isINR && inrRate > 0 ? pnl / inrRate : pnl;
 
       return {
         ...group,
@@ -223,24 +263,25 @@ export const HoldingsTable = ({
         totalCost: totalStockCost,
         pnl,
         pnlPercent,
-        displayLivePrice,
-        displayBuyPrice,
-        displayTotalValue,
-        displayPnl,
-        isConverted,
-        targetCurrency,
+        usdLivePrice,
+        usdBuyPrice,
+        usdTotalValue,
+        usdPnl,
+        displayLivePrice: usdLivePrice,
+        displayBuyPrice: usdBuyPrice,
+        displayTotalValue: usdTotalValue,
+        displayPnl: usdPnl,
       };
     });
 
-    // Sort groups dynamically using the unified display currency values
     return groups.sort((a, b) => {
       if (!sortField) return 0;
 
       const fieldMap = {
-        totalValue: 'displayTotalValue',
-        pnl: 'displayPnl',
-        livePrice: 'displayLivePrice',
-        avgBuyPrice: 'displayBuyPrice',
+        totalValue: 'usdTotalValue',
+        pnl: 'usdPnl',
+        livePrice: 'usdLivePrice',
+        avgBuyPrice: 'usdBuyPrice',
         quantity: 'totalQuantity',
       };
       const field = fieldMap[sortField] || sortField;
@@ -257,23 +298,26 @@ export const HoldingsTable = ({
       if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [holdings, prices, sortField, sortDirection, cryptoTimeframe, targetCurrency]);
+  }, [holdings, prices, sortField, sortDirection, cryptoTimeframe, inrRate]);
+
+  const totalPortfolioDisplayValue = useMemo(() => {
+    return groupedHoldings.reduce((sum, g) => sum + (g.usdTotalValue || 0), 0);
+  }, [groupedHoldings]);
 
   const renderSortIndicator = (field) => {
     if (sortField !== field) {
       return (
-        <ArrowUpDown className="w-3.5 h-3.5 ml-1.5 inline text-slate-500 opacity-0 group-hover:opacity-100 transition" />
+        <ArrowUpDown className="w-3 h-3 ml-1 inline text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition" />
       );
     }
     return sortDirection === 'asc' ? (
-      <ChevronUp className="w-3.5 h-3.5 ml-1.5 inline text-cyan-600 dark:text-cyan-400 font-bold" />
+      <ChevronUp className="w-3 h-3 ml-1 inline text-cyan-600 dark:text-cyan-400 font-bold" />
     ) : (
-      <ChevronDown className="w-3.5 h-3.5 ml-1.5 inline text-cyan-600 dark:text-cyan-400 font-bold" />
+      <ChevronDown className="w-3 h-3 ml-1 inline text-cyan-600 dark:text-cyan-400 font-bold" />
     );
   };
 
   const handleCellClick = (holding, field, currentValue) => {
-    // avgBuyPrice is only editable for stocks and mutual funds
     if (field === 'avgBuyPrice' && holding.assetType !== 'stock' && holding.assetType !== 'mutual_fund') {
       return;
     }
@@ -338,25 +382,12 @@ export const HoldingsTable = ({
     }).format(n);
   };
 
-  // Format in the current active display currency (USD by default, INR when clicked)
   const formatDisplay = (num) => {
-    return targetCurrency === 'INR' ? formatINR(num) : formatUSD(num);
+    return fmt(num);
   };
 
-  // Format in the asset's original native currency (INR for Indian stocks/MFs, USD for crypto)
   const formatNative = (num, isINR) => {
     return isINR ? formatINR(num) : formatUSD(num);
-  };
-
-  // Pick INR for mutual fund or INR stocks, USD for everything else (or fallback to display)
-  const fmtCurrency = (num, assetTypeOrIsINR) => {
-    if (assetTypeOrIsINR === undefined) {
-      return formatDisplay(num);
-    }
-    if (typeof assetTypeOrIsINR === 'boolean') {
-      return assetTypeOrIsINR ? formatINR(num) : formatUSD(num);
-    }
-    return (assetTypeOrIsINR === 'INR' || assetTypeOrIsINR === 'mutual_fund') ? formatINR(num) : formatUSD(num);
   };
 
   const formatQty = (num) => {
@@ -372,29 +403,29 @@ export const HoldingsTable = ({
     switch (type) {
       case 'crypto':
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
-            <Coins className="w-3 h-3 mr-1" />
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+            <Coins className="w-2.5 h-2.5 mr-1" />
             Crypto
           </span>
         );
       case 'stock':
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-            <TrendingUp className="w-3 h-3 mr-1" />
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+            <TrendingUp className="w-2.5 h-2.5 mr-1" />
             Stock
           </span>
         );
       case 'mutual_fund':
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20">
-            <Layers className="w-3 h-3 mr-1" />
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20">
+            <Layers className="w-2.5 h-2.5 mr-1" />
             MF
           </span>
         );
       case 'cash':
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-            <Wallet className="w-3 h-3 mr-1" />
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <Wallet className="w-2.5 h-2.5 mr-1" />
             Cash
           </span>
         );
@@ -405,60 +436,58 @@ export const HoldingsTable = ({
 
   if (holdings.length === 0) {
     return (
-      <div className="glass-panel rounded-2xl p-12 text-center my-6 border dark:border-slate-800 border-slate-200">
-        <div className="w-16 h-16 rounded-2xl dark:bg-slate-800/80 bg-slate-100 border dark:border-slate-700 border-slate-300 flex items-center justify-center mx-auto mb-4 text-slate-400">
-          <Coins className="w-8 h-8 text-cyan-500 dark:text-cyan-400" />
+      <div className="rounded-2xl p-8 text-center border border-[var(--card-border)] bg-[var(--card-bg)]">
+        <div className="w-12 h-12 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] flex items-center justify-center mx-auto mb-3 text-[var(--text-muted)]">
+          <Coins className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
         </div>
-        <h3 className="text-lg font-bold dark:text-white text-slate-900 mb-1 font-heading">No Holdings Found</h3>
-        <p className="text-sm dark:text-slate-400 text-slate-600 max-w-md mx-auto mb-6">
-          Your portfolio is empty in this category. Click <span className="text-cyan-600 dark:text-cyan-400 font-semibold">Extract Screenshot</span> to auto-import via Gemini AI, or add holdings manually.
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">No Holdings Recorded</h3>
+        <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto">
+          No assets in this category. Click Add Asset to add your first position.
         </p>
       </div>
     );
   }
 
   const getTimeframeLabel = () => {
-    if (cryptoTimeframe === '7d') return '7D (vs Last Week)';
-    if (cryptoTimeframe === '30d') return '30D (vs Last Month)';
-    return '24H (vs Yesterday)';
+    if (cryptoTimeframe === '7d') return '7D';
+    if (cryptoTimeframe === '30d') return '30D';
+    return '24H';
   };
 
   return (
-    <div className="glass-panel rounded-2xl overflow-hidden border dark:border-slate-800 border-slate-200 shadow-xl my-6">
-      {/* Table Header Bar with Crypto Timeframe Interval Selector */}
-      <div className="px-4 py-3 border-b dark:border-slate-800 border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 dark:bg-slate-950/40 bg-slate-50/70">
-        <div className="flex items-center space-x-2">
-          <span className="text-xs font-bold uppercase tracking-wider dark:text-slate-300 text-slate-700">
-            Portfolio Holdings
+    <div className="rounded-xl overflow-hidden border border-[var(--card-border)] bg-[var(--card-bg)] shadow-xs">
+      {/* Top Bar with PnL Basis Selector */}
+      <div className="px-3.5 py-2.5 border-b border-[var(--divider-1)] flex flex-wrap items-center justify-between gap-2.5 bg-[var(--card-bg)]">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+            Holdings
           </span>
-          <span className="text-[11px] px-2 py-0.5 rounded-full dark:bg-slate-800 bg-slate-200 dark:text-slate-400 text-slate-600 font-mono font-semibold">
-            {groupedHoldings.length} assets
+          <span className="chip chip-neutral text-[11px] font-semibold">
+            {groupedHoldings.length} {groupedHoldings.length === 1 ? 'asset' : 'assets'}
           </span>
-          <span className="text-[10px] px-2 py-0.5 rounded-md dark:bg-cyan-500/10 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-semibold border border-cyan-500/20">
-            {targetCurrency === 'INR' ? '₹ INR Mode' : '$ USD Mode'}
+          <span className="chip chip-neutral text-[11px] font-semibold">
+            {currency === 'INR' ? '₹ INR Mode' : currency === 'BTC' ? '₿ BTC Mode' : currency === 'HYPE' ? '⚡ HYPE Mode' : '$ USD Mode'}
           </span>
         </div>
 
-        {/* Crypto Timeframe Selector Pill */}
-        <div className="flex items-center space-x-2">
-          <span className="text-[11px] font-semibold dark:text-slate-400 text-slate-500 flex items-center space-x-1">
-            <Clock className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-            <span>Crypto P&L Basis:</span>
+        {/* Crypto Timeframe Selector */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-[var(--text-muted)] flex items-center gap-1">
+            <Clock size={13} className="text-cyan-600 dark:text-cyan-400" />
+            <span>P&L Basis:</span>
           </span>
-          <div className="flex items-center dark:bg-slate-900 bg-slate-200/80 p-0.5 rounded-lg border dark:border-slate-800 border-slate-300">
+          <div className="seg seg-sm" style={{ padding: 2 }}>
             {[
-              { id: '24h', label: '24H (Yesterday)' },
-              { id: '7d', label: '7D (Last Week)' },
+              { id: '24h', label: '24H' },
+              { id: '7d', label: '7D' },
               { id: '30d', label: '30D' },
             ].map((tf) => (
               <button
                 key={tf.id}
+                type="button"
                 onClick={() => setCryptoTimeframe(tf.id)}
-                className={`px-2 py-1 text-[11px] font-bold rounded-md transition cursor-pointer ${
-                  cryptoTimeframe === tf.id
-                    ? 'bg-cyan-500 text-slate-950 shadow-xs'
-                    : 'dark:text-slate-400 text-slate-600 hover:text-slate-900 dark:hover:text-white'
-                }`}
+                className={`seg-btn ${cryptoTimeframe === tf.id ? 'active' : ''}`}
+                style={{ minHeight: 26, padding: '0 9px', fontSize: 11 }}
               >
                 {tf.label}
               </button>
@@ -467,294 +496,269 @@ export const HoldingsTable = ({
         </div>
       </div>
 
-      <div className="overflow-x-auto" style={{ maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
-        <table className="w-full text-left text-sm dark:text-slate-300 text-slate-700" style={{ minWidth: 680 }}>
-          <thead className="dark:bg-slate-900/80 bg-slate-100 text-xs uppercase font-semibold dark:text-slate-400 text-slate-600 border-b dark:border-slate-800 border-slate-200 select-none">
+      {/* ── Desktop View (Compact, Proportional Table) ────────────── */}
+      <div className="hidden md:block overflow-x-auto" style={{ maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
+        <table className="w-full text-left text-sm" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '30%' }} />
+            <col style={{ width: '18%' }} />
+            <col style={{ width: '18%' }} />
+            <col style={{ width: '18%' }} />
+            <col style={{ width: '100px' }} />
+            <col style={{ width: '64px' }} />
+          </colgroup>
+          <thead className="bg-[var(--shell-bg)] text-[10px] uppercase font-semibold text-[var(--text-muted)] border-b border-[var(--divider-1)] select-none" style={{ letterSpacing: '0.08em' }}>
             <tr>
               <th
                 onClick={() => handleSort('symbol')}
-                className="py-3.5 px-4 cursor-pointer dark:hover:text-white hover:text-slate-900 transition group"
+                className="py-2.5 px-4 cursor-pointer hover:text-[var(--text-primary)] transition group"
               >
-                <span>Asset / Symbol</span>
+                <span>Asset · Quantity</span>
                 {renderSortIndicator('symbol')}
               </th>
 
               <th
-                onClick={() => handleSort('quantity')}
-                className="py-3.5 px-4 text-right cursor-pointer dark:hover:text-white hover:text-slate-900 transition group"
-              >
-                <span>Total Quantity</span>
-                {renderSortIndicator('quantity')}
-              </th>
-              {showBuyPrice && (
-                <th
-                  onClick={() => handleSort('avgBuyPrice')}
-                  className="py-3.5 px-4 text-right cursor-pointer dark:hover:text-white hover:text-slate-900 transition group"
-                >
-                  <span>Buy Price (Stocks)</span>
-                  {renderSortIndicator('avgBuyPrice')}
-                </th>
-              )}
-              <th
                 onClick={() => handleSort('livePrice')}
-                className="py-3.5 px-4 text-right cursor-pointer dark:hover:text-white hover:text-slate-900 transition group"
+                className="py-2.5 px-3 cursor-pointer hover:text-[var(--text-primary)] transition group"
               >
-                <span>Live Price</span>
+                <span>Price</span>
                 {renderSortIndicator('livePrice')}
               </th>
+
               <th
                 onClick={() => handleSort('totalValue')}
-                className="py-3.5 px-4 text-right cursor-pointer dark:hover:text-white hover:text-slate-900 transition group"
+                className="py-2.5 px-3 cursor-pointer hover:text-[var(--text-primary)] transition group"
               >
-                <span>Total Value</span>
+                <span>Value · P&L</span>
                 {renderSortIndicator('totalValue')}
               </th>
-              <th
-                onClick={() => handleSort('pnl')}
-                className="py-3.5 px-4 text-right cursor-pointer dark:hover:text-white hover:text-slate-900 transition group"
-                title="Stocks: Gain/Loss vs Buy Price. Crypto: Return vs Period (Yesterday/Last Week)."
-              >
-                <span>P&L / Performance</span>
-                {renderSortIndicator('pnl')}
+
+              <th className="py-2.5 px-3">
+                <span>Allocation</span>
               </th>
-              <th className="py-3.5 px-4 text-center">Status</th>
-              <th className="py-3.5 px-4 text-center">Actions</th>
+
+              <th className="py-2.5 px-3" style={{ width: 100 }}>
+                <span>7D Trend</span>
+              </th>
+
+              <th className="py-2.5 px-3 text-right" style={{ width: 64 }}></th>
             </tr>
           </thead>
-          <tbody className="divide-y dark:divide-slate-800/60 divide-slate-200">
-            {groupedHoldings.map((group) => {
+          <tbody className="divide-y divide-[var(--divider-2)]">
+            {groupedHoldings.map((group, idx) => {
               const hasMultiple = group.items.length > 1;
               const isExpanded = !!expandedSymbols[group.symbol];
-              const isProfit = group.pnl >= 0;
+              const isProfit = group.usdPnl >= 0;
+              const barColor = ALLOCATION_PALETTE[idx % ALLOCATION_PALETTE.length];
+              const allocPct = totalPortfolioDisplayValue > 0 ? (group.usdTotalValue / totalPortfolioDisplayValue * 100) : 0;
+              const spark = generateSparkline(
+                group.priceInfo?.change24h || 0,
+                group.priceInfo?.change7d || 0
+              );
 
               // Single item row
               if (!hasMultiple) {
                 const h = group.items[0];
                 const priceInfo = group.priceInfo;
                 const rowStatus = rowStatuses[h._id];
+                const changePct = Number(group.priceInfo?.change24h || 0);
+                const changePctPositive = changePct >= 0;
                 const schemeDisplayName = h.mfSchemeName || priceInfo?.schemeName;
-                const isProfit = group.pnl >= 0;
 
                 return (
-                  <tr key={h._id} className="dark:hover:bg-slate-800/40 hover:bg-slate-50 transition group">
-                    {/* Symbol / Name */}
-                    <td className="py-4 px-4 font-medium dark:text-white text-slate-900">
-                      <div className="flex items-center space-x-2">
-                        {editingCell?.id === h._id && editingCell?.field === 'symbol' ? (
-                          <input
-                            type="text"
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            onBlur={() => handleCellSave(h, 'symbol')}
-                            onKeyDown={(e) => handleKeyDown(e, h, 'symbol')}
-                            autoFocus
-                            className="w-20 px-2 py-1 rounded dark:bg-slate-900 bg-white border border-cyan-500 text-cyan-600 dark:text-cyan-300 font-bold uppercase text-xs shadow-xs"
+                  <tr key={h._id} className="hover:bg-[var(--shell-bg)] transition-colors group">
+                    {/* ASSET · QUANTITY */}
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-3">
+                        {/* Asset logo or letter avatar */}
+                        <div
+                          onClick={() =>
+                            onUpdateLogo &&
+                            setLogoModalAsset({
+                              symbol: h.symbol,
+                              assetType: h.assetType,
+                              logoUrl: priceInfo?.logoUrl,
+                              isCustomLogo: !!priceInfo?.isCustomLogo,
+                            })
+                          }
+                          className={onUpdateLogo ? 'cursor-pointer hover:opacity-85 hover:scale-105 transition-transform' : ''}
+                          title={onUpdateLogo ? 'Click to change or customize logo' : ''}
+                        >
+                          <AssetLogo
+                            symbol={h.symbol}
+                            assetType={h.assetType}
+                            customUrl={priceInfo?.logoUrl}
+                            size={36}
                           />
-                        ) : h.assetType === 'mutual_fund' && schemeDisplayName ? (
-                          <div
-                            onClick={() => handleCellClick(h, 'symbol', h.symbol)}
-                            className="cursor-pointer group-hover:text-cyan-500 dark:group-hover:text-cyan-400 transition"
-                            title="Click to edit symbol / scheme code"
-                          >
-                            <div className="flex items-center space-x-1.5">
-                              <span className="font-extrabold font-heading text-sm dark:text-white text-slate-900 leading-snug">
-                                {schemeDisplayName}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {editingCell?.id === h._id && editingCell?.field === 'symbol' ? (
+                              <input
+                                type="text"
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                onBlur={() => handleCellSave(h, 'symbol')}
+                                onKeyDown={(e) => handleKeyDown(e, h, 'symbol')}
+                                autoFocus
+                                className="w-20 px-2 py-0.5 rounded bg-[var(--shell-bg)] border border-[var(--btn-primary-bg)] text-xs font-semibold uppercase"
+                              />
+                            ) : (
+                              <span
+                                onClick={() => handleCellClick(h, 'symbol', h.symbol)}
+                                className="cursor-pointer hover:text-cyan-600 dark:hover:text-cyan-400 transition"
+                                title="Click to edit symbol"
+                                style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.2px' }}
+                              >
+                                {schemeDisplayName || h.symbol}
                               </span>
-                              {getAssetBadge(h.assetType)}
-                            </div>
-                            <span className="text-[11px] font-mono text-slate-400">Code: {h.symbol}</span>
+                            )}
+                            {showAssetBadge && getAssetBadge(h.assetType)}
+                            {rowStatus === 'saving' && <Loader2 className="w-3 h-3 text-amber-500 animate-spin" />}
+                            {rowStatus === 'error' && <AlertCircle className="w-3 h-3 text-rose-500" />}
                           </div>
-                        ) : (
-                          <div
-                            onClick={() => handleCellClick(h, 'symbol', h.symbol)}
-                            className="cursor-pointer group-hover:text-cyan-500 dark:group-hover:text-cyan-400 transition flex items-center space-x-1.5 flex-wrap gap-1"
-                            title="Click to edit symbol"
-                          >
-                            <span className="font-extrabold font-heading text-base">{h.symbol}</span>
-                            {getAssetBadge(h.assetType)}
-                            {h.walletOrAccount && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold">
-                                {h.walletOrAccount}
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
+                            {editingCell?.id === h._id && editingCell?.field === 'quantity' ? (
+                              <input
+                                type="number" step="any"
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                onBlur={() => handleCellSave(h, 'quantity')}
+                                onKeyDown={(e) => handleKeyDown(e, h, 'quantity')}
+                                autoFocus
+                                className="w-20 px-1.5 py-0.5 rounded bg-[var(--shell-bg)] border border-[var(--btn-primary-bg)] text-xs"
+                              />
+                            ) : (
+                              <span
+                                onClick={() => handleCellClick(h, 'quantity', h.quantity)}
+                                className="cursor-pointer hover:text-cyan-600 dark:hover:text-cyan-400 transition"
+                                title="Click to edit quantity"
+                              >
+                                {formatQty(h.quantity)}
                               </span>
                             )}
                           </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* PRICE */}
+                    <td className="py-3.5 px-3">
+                      <div>
+                        {h.assetType === 'cash' ? (
+                          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                            {fmtPrice(group.usdLivePrice)}
+                          </div>
+                        ) : (
+                          <>
+                            <div
+                              onClick={() => onUpdatePrice && handleOpenPriceModal(h.symbol)}
+                              className={onUpdatePrice ? 'cursor-pointer' : ''}
+                              title={priceInfo?.isCustom ? 'Custom locked price' : priceInfo?.mappedSymbol ? `Mapped: ${priceInfo.mappedSymbol}` : 'Click to edit price'}
+                              style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}
+                            >
+                              {fmtPrice(group.usdLivePrice)}
+                              {priceInfo?.mappedSymbol && (
+                                <Link2 size={9} className="inline ml-1 text-indigo-500 opacity-60" />
+                              )}
+                              {priceInfo?.isCustom && (
+                                <Lock size={9} className="inline ml-1 text-amber-500 opacity-60" />
+                              )}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: 12,
+                                fontWeight: 500,
+                                marginTop: 2,
+                                fontVariantNumeric: 'tabular-nums',
+                                color: changePct === 0 ? 'var(--text-muted)' : changePctPositive ? 'var(--positive, #10B981)' : 'var(--negative, #EF4444)',
+                              }}
+                            >
+                              {changePctPositive && changePct !== 0 ? '+' : ''}{changePct.toFixed(2)}% (24h)
+                            </div>
+                          </>
                         )}
                       </div>
                     </td>
 
-                    {/* Quantity */}
-                    <td className="py-4 px-4 text-right font-mono dark:text-white text-slate-900">
-                      {editingCell?.id === h._id && editingCell?.field === 'quantity' ? (
-                        <input
-                          type="number"
-                          step="any"
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onBlur={() => handleCellSave(h, 'quantity')}
-                          onKeyDown={(e) => handleKeyDown(e, h, 'quantity')}
-                          autoFocus
-                          className="w-24 px-2 py-1 rounded dark:bg-slate-900 bg-white border border-cyan-500 text-right text-cyan-600 dark:text-cyan-300 font-mono text-xs shadow-xs"
-                        />
-                      ) : (
-                        <span
-                          onClick={() => handleCellClick(h, 'quantity', h.quantity)}
-                          className="cursor-pointer hover:text-cyan-600 dark:hover:text-cyan-300 transition font-bold px-2 py-1 rounded dark:hover:bg-slate-800/60 hover:bg-slate-200/70"
-                          title="Click to edit quantity"
+                    {/* VALUE · P&L */}
+                    <td className="py-3.5 px-3">
+                      <div>
+                        <div
+                          style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}
                         >
-                          {formatQty(h.quantity)}
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Avg Buy Price (Stocks & Mutual Funds) */}
-                    {showBuyPrice && (
-                      <td className="py-4 px-4 text-right font-mono dark:text-slate-300 text-slate-700">
-                        {(h.assetType === 'stock' || h.assetType === 'mutual_fund') ? (
-                          editingCell?.id === h._id && editingCell?.field === 'avgBuyPrice' ? (
-                            <input
-                              type="number"
-                              step="any"
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={() => handleCellSave(h, 'avgBuyPrice')}
-                              onKeyDown={(e) => handleKeyDown(e, h, 'avgBuyPrice')}
-                              autoFocus
-                              className="w-24 px-2 py-1 rounded dark:bg-slate-900 bg-white border border-cyan-500 text-right text-cyan-600 dark:text-cyan-300 font-mono text-xs shadow-xs"
-                            />
-                          ) : (
-                            <span
-                              onClick={() => handleCellClick(h, 'avgBuyPrice', h.avgBuyPrice)}
-                              className="cursor-pointer hover:text-cyan-600 dark:hover:text-cyan-300 transition px-2 py-1 rounded dark:hover:bg-slate-800/60 hover:bg-slate-200/70"
-                              title={
-                                group.isConverted
-                                  ? `Click to edit buy price (Native: ${formatNative(group.weightedAvgBuyPrice, group.isINR)})`
-                                  : `Click to edit ${h.assetType === 'mutual_fund' ? 'purchase NAV' : 'stock buy price'}`
-                              }
-                            >
-                              {formatDisplay(group.displayBuyPrice)}
-                            </span>
-                          )
+                          {fmt(group.usdTotalValue)}
+                        </div>
+                        {h.assetType !== 'cash' ? (
+                          <div
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 500,
+                              marginTop: 2,
+                              fontVariantNumeric: 'tabular-nums',
+                              color: Math.abs(group.usdPnl) < 0.005 ? 'var(--text-muted)' : isProfit ? 'var(--positive, #10B981)' : 'var(--negative, #EF4444)',
+                            }}
+                          >
+                            {fmtDelta(group.usdPnl)}
+                          </div>
                         ) : (
-                          <span className="text-xs dark:text-slate-500 text-slate-400 italic">
-                            {h.assetType === 'crypto' ? 'Airdrop / Live' : '—'}
-                          </span>
+                          <div style={{ fontSize: 12, marginTop: 2, color: 'var(--text-muted)' }}>—</div>
                         )}
-                      </td>
-                    )}
+                      </div>
+                    </td>
 
-                    {/* Live Price */}
-                    <td className="py-4 px-4 text-right font-mono font-medium dark:text-slate-200 text-slate-800">
-                      {h.assetType === 'cash' ? (
-                        formatDisplay(group.displayLivePrice)
-                      ) : (
-                        <div
-                          onClick={() => onUpdatePrice && handleOpenPriceModal(h.symbol)}
-                          className={`inline-flex items-center justify-end space-x-1.5 rounded-lg px-2 py-1 transition cursor-pointer ${
-                            onUpdatePrice ? 'hover:bg-cyan-500/10 hover:text-cyan-500 dark:hover:text-cyan-400 group/price' : ''
-                          }`}
-                          title={
-                            group.isConverted
-                              ? `Converted to ${targetCurrency} (Native: ${formatNative(group.livePrice, group.isINR)} @ ₹${inrRate.toFixed(2)}/$)`
-                              : priceInfo?.mappedSymbol
-                              ? `Mapped to ${priceInfo.mappedSymbol} live quote (Click to edit or unmap)`
-                              : priceInfo?.isCustom
-                              ? `Custom locked price (won't auto-refresh). Click to edit or unlock.`
-                              : `Click to edit price, lock price, or map ticker`
-                          }
-                        >
-                          {priceInfo?.mappedSymbol ? (
-                            <span className="inline-flex items-center space-x-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">
-                              <Link2 className="w-2.5 h-2.5 mr-0.5" />
-                              <span>{priceInfo.mappedSymbol}</span>
-                            </span>
-                          ) : priceInfo?.isCustom ? (
-                            <span className="inline-flex items-center space-x-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                              <Lock className="w-2.5 h-2.5 mr-0.5" />
-                              <span>Locked</span>
-                            </span>
-                          ) : null}
-
-                          <span>{formatDisplay(group.displayLivePrice)}</span>
-                          {onUpdatePrice && (
-                            <Edit2 className="w-3 h-3 text-slate-400 opacity-0 group-hover/price:opacity-100 transition" />
-                          )}
+                    {/* ALLOCATION */}
+                    <td className="py-3.5 px-3">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ flex: 1, minWidth: 60, maxWidth: 130 }}>
+                          <div style={{ height: 7, borderRadius: 9999, background: 'var(--wallet-track, #F1F5F9)', overflow: 'hidden' }}>
+                            <div
+                              style={{
+                                height: '100%',
+                                width: `${Math.min(allocPct, 100)}%`,
+                                borderRadius: 9999,
+                                background: barColor,
+                                transition: 'width 0.3s ease',
+                              }}
+                            />
+                          </div>
                         </div>
-                      )}
-                    </td>
-
-                    {/* Total Value */}
-                    <td
-                      className="py-4 px-4 text-right font-mono font-bold dark:text-white text-slate-900"
-                      title={group.isConverted ? `Native: ${formatNative(group.totalValue, group.isINR)}` : undefined}
-                    >
-                      {formatDisplay(group.displayTotalValue)}
-                    </td>
-
-                    {/* PnL & Performance */}
-                    <td className="py-4 px-4 text-right font-mono">
-                      {h.assetType === 'cash' ? (
-                        <span className="text-slate-400 dark:text-slate-500 text-xs">—</span>
-                      ) : (
-                        <div
-                          className="flex flex-col items-end"
-                          title={group.isConverted ? `Native: ${formatNative(group.pnl, group.isINR)}` : undefined}
-                        >
-                          <span
-                            className={`font-bold ${
-                              isProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-                            }`}
-                          >
-                            {isProfit ? '+' : ''}
-                            {formatDisplay(group.displayPnl)}
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold ${
-                              isProfit ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'
-                            }`}
-                          >
-                            {isProfit ? '+' : ''}
-                            {group.pnlPercent.toFixed(2)}% {h.assetType === 'crypto' ? `(${cryptoTimeframe})` : 'total'}
-                          </span>
-                        </div>
-                      )}
-                    </td>
-
-                    {/* Status */}
-                    <td className="py-4 px-4 text-center">
-                      {rowStatus === 'saving' && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 animate-pulse font-medium">
-                          <Loader2 className="w-3 h-3 mr-1 animate-spin" /> Saving
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums', minWidth: 42, textAlign: 'left' }}>
+                          {allocPct.toFixed(1)}%
                         </span>
-                      )}
-                      {rowStatus === 'saved' && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium">
-                          <CheckCircle className="w-3 h-3 mr-1" /> Saved
-                        </span>
-                      )}
-                      {rowStatus === 'error' && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 font-medium">
-                          <AlertCircle className="w-3 h-3 mr-1" /> Error
-                        </span>
-                      )}
-                      {!rowStatus && <span className="text-slate-400 dark:text-slate-600 text-xs">•</span>}
+                      </div>
                     </td>
 
-                    {/* Actions */}
-                    <td className="py-4 px-4 text-center">
-                      <div className="flex items-center justify-center space-x-1 opacity-80 group-hover:opacity-100 transition">
+                    {/* 7D TREND */}
+                    <td className="py-3.5 px-3">
+                      <svg width="88" height="26" viewBox="0 0 88 26" fill="none" style={{ display: 'block' }}>
+                        <polyline
+                          points={spark.points}
+                          stroke={spark.color}
+                          strokeWidth="2"
+                          fill="none"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </td>
+
+                    {/* ACTIONS */}
+                    <td className="py-3.5 px-3 text-right">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
                         <button
                           onClick={() => onEditClick(h)}
                           title="Edit Details"
-                          className="p-1.5 rounded-lg dark:hover:bg-slate-700 hover:bg-slate-200 text-slate-500 dark:text-slate-400 dark:hover:text-white hover:text-slate-900 transition cursor-pointer"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)] border border-[var(--card-border)] hover:border-slate-300 dark:hover:border-slate-600 transition-all cursor-pointer"
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
+                          <Edit2 size={12} />
                         </button>
                         <button
                           onClick={() => onDeleteHolding(h)}
                           title="Delete Holding"
-                          className="p-1.5 rounded-lg hover:bg-red-500/20 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition cursor-pointer"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 border border-[var(--card-border)] hover:border-rose-500/30 transition-all cursor-pointer"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 size={12} />
                         </button>
                       </div>
                     </td>
@@ -762,175 +766,193 @@ export const HoldingsTable = ({
                 );
               }
 
-              // Multiple entries of the SAME coin (split quantities)
+              // Multiple entries of the SAME coin (splits)
               return (
                 <React.Fragment key={group.symbol}>
                   {/* Aggregated Main Symbol Row */}
                   <tr
                     onClick={() => toggleExpand(group.symbol)}
-                    className="hover:bg-cyan-500/10 transition cursor-pointer group dark:bg-slate-900/40 bg-slate-100/60 font-medium"
+                    className="hover:bg-[var(--shell-bg)] transition-colors cursor-pointer group bg-[var(--card-bg)]"
                   >
-                    {/* Symbol & Expand Button */}
-                    <td className="py-4 px-4 dark:text-white text-slate-900">
-                      <div className="flex items-center space-x-2.5">
-                        <div className="p-1 rounded-lg dark:bg-slate-800 bg-slate-200 dark:group-hover:bg-cyan-500/20 group-hover:bg-cyan-500/10 transition text-cyan-600 dark:text-cyan-400">
-                          {isExpanded ? (
-                            <ChevronDown className="w-4 h-4" />
-                          ) : (
-                            <ChevronRight className="w-4 h-4" />
-                          )}
+                    {/* ASSET · QUANTITY */}
+                    <td className="py-3.5 px-4 text-[var(--text-primary)] font-medium">
+                      <div className="flex items-center gap-3">
+                        <div
+                          onClick={(e) => {
+                            if (onUpdateLogo) {
+                              e.stopPropagation();
+                              setLogoModalAsset({
+                                symbol: group.symbol,
+                                assetType: group.assetType,
+                                logoUrl: group.priceInfo?.logoUrl,
+                                isCustomLogo: !!group.priceInfo?.isCustomLogo,
+                              });
+                            }
+                          }}
+                          className={onUpdateLogo ? 'cursor-pointer hover:opacity-85 hover:scale-105 transition-transform' : ''}
+                          title={onUpdateLogo ? 'Click to change or customize logo' : ''}
+                        >
+                          <AssetLogo
+                            symbol={group.symbol}
+                            assetType={group.assetType}
+                            customUrl={group.priceInfo?.logoUrl}
+                            size={36}
+                          >
+                            <ChevronRight
+                              size={10}
+                              style={{
+                                position: 'absolute',
+                                bottom: -2,
+                                right: -2,
+                                background: 'var(--card-bg)',
+                                borderRadius: '50%',
+                                transition: 'transform 0.2s',
+                                transform: isExpanded ? 'rotate(90deg)' : 'none',
+                                color: 'var(--text-muted)',
+                              }}
+                            />
+                          </AssetLogo>
                         </div>
-                        <span className="font-extrabold font-heading text-base dark:text-white text-slate-900">
-                          {group.symbol}
-                        </span>
-                        {getAssetBadge(group.assetType)}
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 shadow-xs">
-                          {group.items.length} splits
+                        <div style={{ minWidth: 0 }}>
+                          <div className="flex items-center gap-1.5">
+                            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.2px' }}>
+                              {group.symbol}
+                            </span>
+                            {showAssetBadge && getAssetBadge(group.assetType)}
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
+                            {formatQty(group.totalQuantity)}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* PRICE */}
+                    <td className="py-3.5 px-3">
+                      {group.assetType === 'cash' ? (
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                          {fmtPrice(group.usdLivePrice)}
+                        </div>
+                      ) : (
+                        <div
+                          onClick={(e) => { e.stopPropagation(); onUpdatePrice && handleOpenPriceModal(group.symbol); }}
+                          className={onUpdatePrice ? 'cursor-pointer' : ''}
+                        >
+                          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                            {fmtPrice(group.usdLivePrice)}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 500,
+                              marginTop: 2,
+                              fontVariantNumeric: 'tabular-nums',
+                              color: (group.priceInfo?.change24h || 0) === 0 ? 'var(--text-muted)' : (group.priceInfo?.change24h || 0) >= 0 ? 'var(--positive, #10B981)' : 'var(--negative, #EF4444)',
+                            }}
+                          >
+                            {(group.priceInfo?.change24h || 0) >= 0 ? '+' : ''}{(group.priceInfo?.change24h || 0).toFixed(2)}% (24h)
+                          </div>
+                        </div>
+                      )}
+                    </td>
+
+                    {/* VALUE · P&L */}
+                    <td className="py-3.5 px-3">
+                      <div>
+                        <div
+                          style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}
+                        >
+                          {fmt(group.usdTotalValue)}
+                        </div>
+                        {group.assetType !== 'cash' ? (
+                          <div
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 500,
+                              marginTop: 2,
+                              fontVariantNumeric: 'tabular-nums',
+                              color: Math.abs(group.usdPnl) < 0.005 ? 'var(--text-muted)' : isProfit ? 'var(--positive, #10B981)' : 'var(--negative, #EF4444)',
+                            }}
+                          >
+                            {fmtDelta(group.usdPnl)}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 12, marginTop: 2, color: 'var(--text-muted)' }}>—</div>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* ALLOCATION */}
+                    <td className="py-3.5 px-3">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ flex: 1, minWidth: 60, maxWidth: 130 }}>
+                          <div style={{ height: 7, borderRadius: 9999, background: 'var(--wallet-track, #F1F5F9)', overflow: 'hidden' }}>
+                            <div
+                              style={{
+                                height: '100%',
+                                width: `${Math.min(allocPct, 100)}%`,
+                                borderRadius: 9999,
+                                background: barColor,
+                                transition: 'width 0.3s ease',
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums', minWidth: 42, textAlign: 'left' }}>
+                          {allocPct.toFixed(1)}%
                         </span>
                       </div>
                     </td>
 
-                    {/* Quantity */}
-                    <td className="py-4 px-4 text-right font-mono font-extrabold dark:text-white text-slate-900 text-base">
-                      {formatQty(group.totalQuantity)}
+                    {/* 7D TREND */}
+                    <td className="py-3.5 px-3">
+                      <svg width="88" height="26" viewBox="0 0 88 26" fill="none" style={{ display: 'block' }}>
+                        <polyline
+                          points={spark.points}
+                          stroke={spark.color}
+                          strokeWidth="2"
+                          fill="none"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
                     </td>
 
-                    {/* Weighted Avg Buy Price (Stocks & Mutual Funds) */}
-                    {showBuyPrice && (
-                      <td className="py-4 px-4 text-right font-mono dark:text-slate-300 text-slate-700">
-                        {(group.assetType === 'stock' || group.assetType === 'mutual_fund') && group.displayBuyPrice !== null ? (
-                          <span title={group.isConverted ? `Native: ${formatNative(group.weightedAvgBuyPrice, group.isINR)}` : undefined}>
-                            {formatDisplay(group.displayBuyPrice)}
-                          </span>
-                        ) : (
-                          <span className="text-xs dark:text-slate-500 text-slate-400 italic">
-                            {group.assetType === 'crypto' ? 'Airdrop / Live' : '—'}
-                          </span>
-                        )}
-                      </td>
-                    )}
-
-                    {/* Live Market Price */}
-                    <td className="py-4 px-4 text-right font-mono font-medium dark:text-slate-200 text-slate-800">
-                      {group.assetType === 'cash' ? (
-                        formatDisplay(group.displayLivePrice)
-                      ) : (
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onUpdatePrice && handleOpenPriceModal(group.symbol);
-                          }}
-                          className={`inline-flex items-center justify-end space-x-1.5 rounded-lg px-2 py-1 transition cursor-pointer ${
-                            onUpdatePrice ? 'hover:bg-cyan-500/20 hover:text-cyan-500 dark:hover:text-cyan-400 group/price' : ''
-                          }`}
-                          title={
-                            group.isConverted
-                              ? `Converted to ${targetCurrency} (Native: ${formatNative(group.livePrice, group.isINR)} @ ₹${inrRate.toFixed(2)}/$)`
-                              : group.priceInfo?.mappedSymbol
-                              ? `Mapped to ${group.priceInfo.mappedSymbol} live quote (Click to edit or unmap)`
-                              : group.priceInfo?.isCustom
-                              ? `Custom locked price (won't auto-refresh). Click to edit or unlock.`
-                              : `Click to edit price, lock price, or map ticker`
-                          }
-                        >
-                          {group.priceInfo?.mappedSymbol ? (
-                            <span className="inline-flex items-center space-x-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">
-                              <Link2 className="w-2.5 h-2.5 mr-0.5" />
-                              <span>{group.priceInfo.mappedSymbol}</span>
-                            </span>
-                          ) : group.priceInfo?.isCustom ? (
-                            <span className="inline-flex items-center space-x-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                              <Lock className="w-2.5 h-2.5 mr-0.5" />
-                              <span>Locked</span>
-                            </span>
-                          ) : null}
-
-                          <span>{formatDisplay(group.displayLivePrice)}</span>
-                          {onUpdatePrice && (
-                            <Edit2 className="w-3 h-3 text-slate-400 opacity-0 group-hover/price:opacity-100 transition" />
-                          )}
-                        </div>
-                      )}
-                    </td>
-
-                    {/* Total Aggregated Value */}
-                    <td
-                      className="py-4 px-4 text-right font-mono font-extrabold text-cyan-600 dark:text-cyan-300 text-base"
-                      title={group.isConverted ? `Native: ${formatNative(group.totalValue, group.isINR)}` : undefined}
-                    >
-                      {formatDisplay(group.displayTotalValue)}
-                    </td>
-
-                    {/* Total Aggregated PnL */}
-                    <td className="py-4 px-4 text-right font-mono">
-                      {group.assetType === 'cash' ? (
-                        <span className="text-slate-400 dark:text-slate-500 text-xs">—</span>
-                      ) : (
-                        <div
-                          className="flex flex-col items-end"
-                          title={group.isConverted ? `Native: ${formatNative(group.pnl, group.isINR)}` : undefined}
-                        >
-                          <span
-                            className={`font-extrabold ${
-                              isProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-                            }`}
-                          >
-                            {isProfit ? '+' : ''}
-                            {formatDisplay(group.displayPnl)}
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold ${
-                              isProfit ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'
-                            }`}
-                          >
-                            {isProfit ? '+' : ''}
-                            {group.pnlPercent.toFixed(2)}% {group.assetType === 'crypto' ? `(${cryptoTimeframe})` : 'total'}
-                          </span>
-                        </div>
-                      )}
-                    </td>
-
-                    <td className="py-4 px-4 text-center text-xs text-slate-400 font-semibold"></td>
-
-                    {/* Toggle chevron */}
-                    <td className="py-4 px-4 text-center">
-                      <span className={`inline-flex transition-transform duration-200 text-cyan-500 dark:text-cyan-400 ${isExpanded ? 'rotate-180' : ''}`}>
-                        <ChevronDown className="w-4 h-4" />
-                      </span>
-                    </td>
+                    {/* Actions (empty for split rows — expand chevron is in avatar) */}
+                    <td className="py-3.5 px-3 text-right" style={{ width: 64 }}></td>
                   </tr>
 
                   {/* Expanded Accordion Sub-Table Row */}
                   {isExpanded && (
                     <tr>
-                      <td colSpan={showBuyPrice ? 8 : 7} className="p-0 dark:bg-[#090d16] bg-slate-50 border-y dark:border-cyan-500/20 border-cyan-500/30">
-                        <div className="p-4 pl-10 space-y-2">
-                          <div className="text-xs font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider mb-2 flex items-center space-x-2">
-                            <Layers className="w-4 h-4" />
-                            <span>Quantity Split Breakdown for {group.symbol} ({group.items.length} entries)</span>
+                      <td colSpan={6} className="p-0 bg-[var(--shell-bg)] border-y border-[var(--divider-1)]">
+                        <div className="py-3 px-6 space-y-2">
+                          <div className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider flex items-center space-x-1.5">
+                            <Layers size={13} />
+                            <span>Split Positions ({group.items.length})</span>
                           </div>
 
-                          <table className="w-full text-xs text-left dark:text-slate-300 text-slate-700 dark:bg-slate-900/80 bg-white rounded-xl overflow-hidden border dark:border-slate-800 border-slate-200 shadow-xs">
-                            <thead className="dark:bg-slate-950 bg-slate-100 text-[10px] uppercase font-bold dark:text-slate-400 text-slate-600 border-b dark:border-slate-800 border-slate-200">
+                          <table className="w-full text-xs text-left rounded-lg overflow-hidden border border-[var(--card-border)] bg-[var(--card-bg)] shadow-2xs">
+                            <thead className="bg-[var(--shell-bg)] text-[10px] uppercase font-semibold text-[var(--text-muted)] border-b border-[var(--divider-1)]">
                               <tr>
-                                <th className="p-2.5">Split Entry</th>
-                                <th className="p-2.5 text-right">Quantity (% Share)</th>
+                                <th className="py-2 px-3">Entry</th>
+                                <th className="py-2 px-3 text-right">Quantity (% Share)</th>
                                 {showBuyPrice && (group.assetType === 'stock' || group.assetType === 'mutual_fund') && (
-                                  <th className="p-2.5 text-right">Buy Price</th>
+                                  <th className="py-2 px-3 text-right">Buy Price</th>
                                 )}
-                                <th className="p-2.5 text-right">Value</th>
-                                <th className="p-2.5 text-right">P&L ({getTimeframeLabel()})</th>
-                                <th className="p-2.5 text-center">Actions</th>
+                                <th className="py-2 px-3 text-right">Value</th>
+                                <th className="py-2 px-3 text-right">P&L ({getTimeframeLabel()})</th>
+                                <th className="py-2 px-3 text-right w-[60px]">Actions</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y dark:divide-slate-800/80 divide-slate-200">
+                            <tbody className="divide-y divide-[var(--divider-2)]">
                               {group.items.map((subItem, index) => {
                                 const subCurrentPrice =
                                   subItem.assetType === 'cash'
                                     ? 1
                                     : group.livePrice > 0
-                                    ? group.livePrice
-                                    : (subItem.avgBuyPrice || 0);
+                                      ? group.livePrice
+                                      : (subItem.avgBuyPrice || 0);
 
                                 const subVal = subItem.quantity * subCurrentPrice;
                                 let subPnL = 0;
@@ -945,8 +967,8 @@ export const HoldingsTable = ({
                                     cryptoTimeframe === '7d'
                                       ? group.priceInfo?.change7d || 0
                                       : cryptoTimeframe === '30d'
-                                      ? group.priceInfo?.change30d || 0
-                                      : group.priceInfo?.change24h || 0;
+                                        ? group.priceInfo?.change30d || 0
+                                        : group.priceInfo?.change24h || 0;
 
                                   const startPrice = subCurrentPrice / (1 + changePct / 100);
                                   subPnL = subItem.quantity * (subCurrentPrice - startPrice);
@@ -956,48 +978,36 @@ export const HoldingsTable = ({
                                 const subIsProfit = subPnL >= 0;
                                 const pctShare = group.totalQuantity > 0 ? ((subItem.quantity / group.totalQuantity) * 100).toFixed(1) : '0';
 
-                                // Convert split sub-item values to target currency
-                                let subDisplayVal = subVal;
-                                let subDisplayPnL = subPnL;
-                                let subDisplayBuyPrice = subItem.avgBuyPrice !== undefined && subItem.avgBuyPrice !== null ? Number(subItem.avgBuyPrice) : null;
+                                const subUsdVal = group.isINR && inrRate > 0 ? subVal / inrRate : subVal;
+                                const subUsdPnL = group.isINR && inrRate > 0 ? subPnL / inrRate : subPnL;
+                                let subUsdBuyPrice = subItem.avgBuyPrice !== undefined && subItem.avgBuyPrice !== null ? Number(subItem.avgBuyPrice) : null;
+                                if (subUsdBuyPrice !== null && group.isINR && inrRate > 0) subUsdBuyPrice /= inrRate;
 
-                                if (targetCurrency === 'USD') {
-                                  if (group.isINR && inrRate > 0) {
-                                    subDisplayVal = subVal / inrRate;
-                                    subDisplayPnL = subPnL / inrRate;
-                                    if (subDisplayBuyPrice !== null) subDisplayBuyPrice = subDisplayBuyPrice / inrRate;
-                                  }
-                                } else if (targetCurrency === 'INR') {
-                                  if (!group.isINR) {
-                                    subDisplayVal = subVal * inrRate;
-                                    subDisplayPnL = subPnL * inrRate;
-                                    if (subDisplayBuyPrice !== null) subDisplayBuyPrice = subDisplayBuyPrice * inrRate;
-                                  }
-                                }
+                                const subDisplayVal = subUsdVal;
+                                const subDisplayPnL = subUsdPnL;
+                                const subDisplayBuyPrice = subUsdBuyPrice;
 
                                 return (
-                                  <tr key={subItem._id} className="dark:hover:bg-slate-800/60 hover:bg-slate-50 transition">
-                                    {/* Split Entry Label */}
-                                    <td className="p-2.5 font-semibold dark:text-white text-slate-900">
-                                      <div className="flex items-center space-x-2">
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-slate-500/10 text-slate-600 dark:text-slate-300 border dark:border-slate-700 border-slate-300 font-mono">
+                                  <tr key={subItem._id} className="hover:bg-[var(--shell-bg)] transition-colors">
+                                    <td className="py-2 px-3 font-medium text-[var(--text-primary)]">
+                                      <div className="flex items-center space-x-1.5">
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-[var(--shell-bg)] text-[var(--text-muted)] border border-[var(--card-border)] font-medium">
                                           #{index + 1}
                                         </span>
                                         {subItem.walletOrAccount && (
-                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold">
+                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium">
                                             {subItem.walletOrAccount}
                                           </span>
                                         )}
                                         {subItem.notes && (
-                                          <span className="text-[11px] text-slate-500 dark:text-slate-400 italic font-normal truncate max-w-xs">
+                                          <span className="text-[11px] text-[var(--text-muted)] italic truncate max-w-xs">
                                             {subItem.notes}
                                           </span>
                                         )}
                                       </div>
                                     </td>
 
-                                    {/* Individual Quantity with % Share */}
-                                    <td className="p-2.5 text-right font-mono dark:text-white text-slate-900">
+                                    <td className="py-2 px-3 text-right font-medium tabular-nums text-[var(--text-primary)]">
                                       {editingCell?.id === subItem._id && editingCell?.field === 'quantity' ? (
                                         <input
                                           type="number"
@@ -1007,25 +1017,24 @@ export const HoldingsTable = ({
                                           onBlur={() => handleCellSave(subItem, 'quantity')}
                                           onKeyDown={(e) => handleKeyDown(e, subItem, 'quantity')}
                                           autoFocus
-                                          className="w-24 px-2 py-1 rounded dark:bg-slate-900 bg-white border border-cyan-500 text-right text-cyan-600 dark:text-cyan-300 font-mono text-xs shadow-xs"
+                                          className="w-20 px-1.5 py-0.5 rounded bg-[var(--shell-bg)] border border-[var(--btn-primary-bg)] text-right text-xs"
                                         />
                                       ) : (
                                         <div
                                           onClick={() => handleCellClick(subItem, 'quantity', subItem.quantity)}
-                                          className="inline-flex items-center space-x-1.5 cursor-pointer hover:text-cyan-600 dark:hover:text-cyan-300 transition"
+                                          className="inline-flex items-center space-x-1 cursor-pointer hover:text-cyan-600 dark:hover:text-cyan-400 transition"
                                           title="Click to edit split quantity"
                                         >
-                                          <span className="font-bold">{formatQty(subItem.quantity)}</span>
-                                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-semibold">
+                                          <span>{formatQty(subItem.quantity)}</span>
+                                          <span className="text-[10px] px-1 py-0.2 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-medium">
                                             {pctShare}%
                                           </span>
                                         </div>
                                       )}
                                     </td>
 
-                                    {/* Buy Price or Status */}
                                     {showBuyPrice && (group.assetType === 'stock' || group.assetType === 'mutual_fund') && (
-                                      <td className="p-2.5 text-right font-mono dark:text-slate-300 text-slate-700">
+                                      <td className="py-2 px-3 text-right tabular-nums text-[var(--text-secondary)]">
                                         {editingCell?.id === subItem._id && editingCell?.field === 'avgBuyPrice' ? (
                                           <input
                                             type="number"
@@ -1035,12 +1044,12 @@ export const HoldingsTable = ({
                                             onBlur={() => handleCellSave(subItem, 'avgBuyPrice')}
                                             onKeyDown={(e) => handleKeyDown(e, subItem, 'avgBuyPrice')}
                                             autoFocus
-                                            className="w-24 px-2 py-1 rounded dark:bg-slate-900 bg-white border border-cyan-500 text-right text-cyan-600 dark:text-cyan-300 font-mono text-xs shadow-xs"
+                                            className="w-20 px-1.5 py-0.5 rounded bg-[var(--shell-bg)] border border-[var(--btn-primary-bg)] text-right text-xs"
                                           />
                                         ) : (
                                           <span
                                             onClick={() => handleCellClick(subItem, 'avgBuyPrice', subItem.avgBuyPrice)}
-                                            className="cursor-pointer hover:text-cyan-600 dark:hover:text-cyan-300 transition px-2 py-1 rounded dark:hover:bg-slate-800/60 hover:bg-slate-200/70"
+                                            className="cursor-pointer hover:text-cyan-600 dark:hover:text-cyan-400 transition px-1 py-0.5 rounded hover:bg-[var(--divider-2)]"
                                             title="Click to edit buy price"
                                           >
                                             {formatDisplay(subDisplayBuyPrice)}
@@ -1049,17 +1058,14 @@ export const HoldingsTable = ({
                                       </td>
                                     )}
 
-                                    {/* Value */}
-                                    <td className="p-2.5 text-right font-mono font-bold dark:text-white text-slate-900">
+                                    <td className="py-2 px-3 text-right tabular-nums font-semibold text-[var(--text-primary)]">
                                       {formatDisplay(subDisplayVal)}
                                     </td>
 
-                                    {/* PnL */}
-                                    <td className="p-2.5 text-right font-mono">
+                                    <td className="py-2 px-3 text-right tabular-nums">
                                       <span
-                                        className={`font-bold ${
-                                          subIsProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-                                        }`}
+                                        className="font-semibold"
+                                        style={{ color: subIsProfit ? 'var(--positive)' : 'var(--negative)' }}
                                       >
                                         {subIsProfit ? '+' : ''}
                                         {formatDisplay(subDisplayPnL)} ({subIsProfit ? '+' : ''}
@@ -1067,28 +1073,27 @@ export const HoldingsTable = ({
                                       </span>
                                     </td>
 
-                                    {/* Actions */}
-                                    <td className="p-2.5 text-center">
-                                      <div className="flex items-center justify-center space-x-1">
+                                    <td className="py-2 px-3 text-right">
+                                      <div className="flex items-center justify-end space-x-1">
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             onEditClick(subItem);
                                           }}
-                                          title="Edit Split Entry"
-                                          className="p-1 rounded dark:hover:bg-slate-700 hover:bg-slate-200 text-slate-500 dark:text-slate-400 dark:hover:text-white hover:text-slate-900 transition cursor-pointer"
+                                          title="Edit"
+                                          className="w-6 h-6 rounded flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)] transition cursor-pointer"
                                         >
-                                          <Edit2 className="w-3.5 h-3.5" />
+                                          <Edit2 size={11} />
                                         </button>
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             onDeleteHolding(subItem);
                                           }}
-                                          title="Delete Split Entry"
-                                          className="p-1 rounded hover:bg-red-500/20 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition cursor-pointer"
+                                          title="Delete"
+                                          className="w-6 h-6 rounded flex items-center justify-center text-[var(--text-muted)] hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
                                         >
-                                          <Trash2 className="w-3.5 h-3.5" />
+                                          <Trash2 size={11} />
                                         </button>
                                       </div>
                                     </td>
@@ -1108,7 +1113,279 @@ export const HoldingsTable = ({
         </table>
       </div>
 
-      {/* Price Override / Mapping Modal */}
+      {/* ── Mobile View (Compact Responsive Card List) ────────────── */}
+      <div className="block md:hidden p-3 space-y-2.5">
+        {groupedHoldings.map((group) => {
+          const hasMultiple = group.items.length > 1;
+          const isExpanded = !!expandedSymbols[group.symbol];
+          const isProfit = group.pnl >= 0;
+
+          // Mobile Single Item Card
+          if (!hasMultiple) {
+            const h = group.items[0];
+            const rowStatus = rowStatuses[h._id];
+
+            return (
+              <div
+                key={h._id}
+                className="p-3 rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] shadow-2xs flex flex-col gap-2"
+              >
+                {/* Header: Symbol + Live Price & 24h PnL */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div
+                      onClick={(e) => {
+                        if (onUpdateLogo) {
+                          e.stopPropagation();
+                          setLogoModalAsset({
+                            symbol: h.symbol,
+                            assetType: h.assetType,
+                            logoUrl: group.priceInfo?.logoUrl,
+                            isCustomLogo: !!group.priceInfo?.isCustomLogo,
+                          });
+                        }
+                      }}
+                      className={onUpdateLogo ? 'cursor-pointer hover:opacity-85' : ''}
+                      title={onUpdateLogo ? 'Click to change logo' : ''}
+                    >
+                      <AssetLogo symbol={h.symbol} assetType={h.assetType} customUrl={group.priceInfo?.logoUrl} size={20} />
+                    </div>
+                    <span className="font-semibold text-sm text-[var(--text-primary)] tracking-tight">
+                      {h.symbol}
+                    </span>
+                    {h.walletOrAccount && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        {h.walletOrAccount}
+                      </span>
+                    )}
+                    {rowStatus === 'saving' && (
+                      <Loader2 className="w-3 h-3 text-amber-500 animate-spin" />
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => onUpdatePrice && handleOpenPriceModal(h.symbol)}
+                      className="tabular-nums text-xs font-semibold text-[var(--text-primary)]"
+                    >
+                      {formatDisplay(group.displayLivePrice)}
+                    </button>
+                    <span
+                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${isProfit ? 'chip-positive' : 'chip-negative'
+                        }`}
+                    >
+                      {isProfit ? '+' : ''}{group.pnlPercent.toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* Metrics */}
+                <div className="grid grid-cols-3 gap-2 py-1.5 px-2.5 rounded-lg bg-[var(--shell-bg)] border border-[var(--divider-2)] text-xs tabular-nums">
+                  <div>
+                    <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Quantity</div>
+                    <div className="font-semibold text-[var(--text-primary)] truncate mt-0.5">{formatQty(h.quantity)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Value</div>
+                    <div className="font-bold text-[var(--text-primary)] truncate mt-0.5">{formatDisplay(group.displayTotalValue)}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">P&L</div>
+                    <div
+                      className="font-semibold truncate mt-0.5"
+                      style={{ color: isProfit ? 'var(--positive)' : 'var(--negative)' }}
+                    >
+                      {isProfit ? '+' : ''}{formatDisplay(group.displayPnl)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between pt-1 border-t border-[var(--divider-2)]">
+                  <div className="text-[11px] text-[var(--text-muted)] tabular-nums">
+                    {showBuyPrice && group.displayBuyPrice !== null && (
+                      <span>Avg: {formatDisplay(group.displayBuyPrice)}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => onEditClick(h)}
+                      className="px-2 py-1 rounded-md text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--shell-bg)] border border-[var(--card-border)] transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit2 size={11} /> Edit
+                    </button>
+                    <button
+                      onClick={() => onDeleteHolding(h)}
+                      className="px-2 py-1 rounded-md text-xs font-medium text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <Trash2 size={11} /> Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // Mobile Multi-Split Card
+          return (
+            <div
+              key={group.symbol}
+              className="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] overflow-hidden shadow-2xs"
+            >
+              <div
+                onClick={() => toggleExpand(group.symbol)}
+                className="p-3 flex flex-col gap-2 cursor-pointer select-none"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <ChevronRight
+                      size={14}
+                      className={`text-[var(--text-muted)] transition-transform duration-200 ${isExpanded ? 'rotate-90 text-cyan-600 dark:text-cyan-400' : ''
+                        }`}
+                    />
+                    <div
+                      onClick={(e) => {
+                        if (onUpdateLogo) {
+                          e.stopPropagation();
+                          setLogoModalAsset({
+                            symbol: group.symbol,
+                            assetType: group.assetType,
+                            logoUrl: group.priceInfo?.logoUrl,
+                            isCustomLogo: !!group.priceInfo?.isCustomLogo,
+                          });
+                        }
+                      }}
+                      className={onUpdateLogo ? 'cursor-pointer hover:opacity-85' : ''}
+                      title={onUpdateLogo ? 'Click to change logo' : ''}
+                    >
+                      <AssetLogo symbol={group.symbol} assetType={group.assetType} customUrl={group.priceInfo?.logoUrl} size={20} />
+                    </div>
+                    <span className="font-semibold text-sm text-[var(--text-primary)] tracking-tight">
+                      {group.symbol}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onUpdatePrice && handleOpenPriceModal(group.symbol);
+                      }}
+                      className="tabular-nums text-xs font-semibold text-[var(--text-primary)]"
+                    >
+                      {formatDisplay(group.displayLivePrice)}
+                    </span>
+                    <span
+                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${isProfit ? 'chip-positive' : 'chip-negative'
+                        }`}
+                    >
+                      {isProfit ? '+' : ''}{group.pnlPercent.toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 py-1.5 px-2.5 rounded-lg bg-[var(--shell-bg)] border border-[var(--divider-2)] text-xs tabular-nums">
+                  <div>
+                    <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Total Qty</div>
+                    <div className="font-semibold text-[var(--text-primary)] truncate mt-0.5">{formatQty(group.totalQuantity)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Total Value</div>
+                    <div className="font-bold text-[var(--text-primary)] truncate mt-0.5">{formatDisplay(group.displayTotalValue)}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">P&L</div>
+                    <div
+                      className="font-semibold truncate mt-0.5"
+                      style={{ color: isProfit ? 'var(--positive)' : 'var(--negative)' }}
+                    >
+                      {isProfit ? '+' : ''}{formatDisplay(group.displayPnl)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {isExpanded && (
+                <div className="p-2.5 bg-[var(--shell-bg)] border-t border-[var(--divider-2)] space-y-1.5">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 px-1">
+                    Split Entries ({group.items.length})
+                  </div>
+                  {group.items.map((subItem, index) => {
+                    const subCurrentPrice =
+                      subItem.assetType === 'cash'
+                        ? 1
+                        : group.livePrice > 0
+                          ? group.livePrice
+                          : (subItem.avgBuyPrice || 0);
+
+                    const subVal = subItem.quantity * subCurrentPrice;
+                    let subPnL = 0;
+                    if (subItem.assetType === 'stock' || subItem.assetType === 'mutual_fund') {
+                      const subCost = subItem.quantity * (subItem.avgBuyPrice || 0);
+                      subPnL = subVal - subCost;
+                    } else if (subItem.assetType === 'crypto') {
+                      const changePct =
+                        cryptoTimeframe === '7d'
+                          ? group.priceInfo?.change7d || 0
+                          : cryptoTimeframe === '30d'
+                            ? group.priceInfo?.change30d || 0
+                            : group.priceInfo?.change24h || 0;
+                      const startPrice = subCurrentPrice / (1 + changePct / 100);
+                      subPnL = subItem.quantity * (subCurrentPrice - startPrice);
+                    }
+                    const subIsProfit = subPnL >= 0;
+                    const pctShare = group.totalQuantity > 0 ? ((subItem.quantity / group.totalQuantity) * 100).toFixed(1) : '0';
+
+                    const subUsdVal = group.isINR && inrRate > 0 ? subVal / inrRate : subVal;
+                    const subUsdPnL = group.isINR && inrRate > 0 ? subPnL / inrRate : subPnL;
+                    const subDisplayVal = subUsdVal;
+                    const subDisplayPnL = subUsdPnL;
+
+                    return (
+                      <div
+                        key={subItem._id}
+                        className="p-2 rounded-lg bg-[var(--card-bg)] border border-[var(--card-border)] flex items-center justify-between gap-2 text-xs"
+                      >
+                        <div>
+                          <div className="flex items-center gap-1.5 tabular-nums">
+                            <span className="text-[10px] px-1 py-0.2 rounded bg-[var(--shell-bg)] text-[var(--text-muted)]">
+                              #{index + 1}
+                            </span>
+                            <span className="font-semibold text-[var(--text-primary)]">{formatQty(subItem.quantity)}</span>
+                            <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-medium">({pctShare}%)</span>
+                          </div>
+                          <div className="text-[11px] tabular-nums text-[var(--text-muted)] mt-0.5">
+                            {formatDisplay(subDisplayVal)} · <span style={{ color: subIsProfit ? 'var(--positive)' : 'var(--negative)' }}>
+                              {subIsProfit ? '+' : ''}{formatDisplay(subDisplayPnL)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => onEditClick(subItem)}
+                            className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)] cursor-pointer"
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                          <button
+                            onClick={() => onDeleteHolding(subItem)}
+                            className="p-1 rounded text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Price Override Modal */}
       <PriceEditModal
         isOpen={isPriceModalOpen}
         onClose={() => {
@@ -1119,12 +1396,24 @@ export const HoldingsTable = ({
         currentPriceInfo={
           priceModalSymbol
             ? (typeof prices[priceModalSymbol] === 'object' && prices[priceModalSymbol] !== null
-                ? prices[priceModalSymbol]
-                : { price: Number(prices[priceModalSymbol]) || 0 })
+              ? prices[priceModalSymbol]
+              : { price: Number(prices[priceModalSymbol]) || 0 })
             : {}
         }
         onSavePrice={onUpdatePrice}
         onResetPrice={onResetPrice}
+      />
+
+      {/* Logo Picker Modal */}
+      <LogoPickerModal
+        isOpen={!!logoModalAsset}
+        onClose={() => setLogoModalAsset(null)}
+        symbol={logoModalAsset?.symbol || ''}
+        assetType={logoModalAsset?.assetType || 'crypto'}
+        currentLogoUrl={logoModalAsset?.logoUrl || null}
+        isCustomLogo={!!logoModalAsset?.isCustomLogo}
+        onSaveLogo={onUpdateLogo}
+        onResetLogo={onResetLogo}
       />
     </div>
   );

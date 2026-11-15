@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Save, Coins, TrendingUp, DollarSign, Wallet, Layers, Search, Loader2, CheckCircle2 } from 'lucide-react';
 import api from '../api/axiosInstance';
 
@@ -233,28 +233,31 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
   const isMutualFund = formData.assetType === 'mutual_fund';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-      <div className="glass-panel w-full max-w-lg rounded-2xl border dark:border-slate-800 border-slate-200 shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto">
+    <div className="modal-backdrop animate-fadeIn" onClick={onClose}>
+      <div
+        className="w-full max-w-lg rounded-2xl border border-[var(--card-border)] bg-[var(--panel-bg)] shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto text-[var(--text-primary)]"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 dark:hover:text-white hover:text-slate-900 rounded-xl dark:bg-slate-900/60 bg-slate-100 dark:hover:bg-slate-800 hover:bg-slate-200 border dark:border-slate-800 border-slate-300 transition cursor-pointer"
+          className="absolute top-4 right-4 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)] transition cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Modal Title */}
-        <div className="mb-6">
-          <h2 className="text-xl font-bold dark:text-white text-slate-900 font-heading">
+        <div className="mb-5">
+          <h2 className="text-base sm:text-lg font-bold text-[var(--text-primary)] tracking-tight">
             {holdingToEdit ? 'Edit Asset Holding' : 'Add New Asset Holding'}
           </h2>
-          <p className="text-xs dark:text-slate-400 text-slate-500 mt-1">
+          <p className="text-xs text-[var(--text-muted)] mt-1">
             {holdingToEdit ? 'Update details of your existing portfolio entry' : 'Record a cryptocurrency, stock, mutual fund, or cash balance'}
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 dark:text-rose-400 text-xs font-semibold">
+          <div className="mb-4 p-3 rounded-xl bg-[var(--negative-bg)] border border-[var(--negative)]/20 text-[var(--negative)] text-xs font-medium">
             {error}
           </div>
         )}
@@ -262,7 +265,9 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Asset Type Selector */}
           <div>
-            <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase mb-2">Asset Type</label>
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
+              Asset Type
+            </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
                 { type: 'crypto', label: 'Crypto', icon: Coins },
@@ -274,10 +279,10 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
                   type="button"
                   key={type}
                   onClick={() => handleAssetTypeChange(type)}
-                  className={`flex items-center justify-center space-x-1.5 py-2.5 px-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                  className={`flex items-center justify-center space-x-1.5 py-2.5 px-2 rounded-xl border text-xs font-medium transition cursor-pointer ${
                     formData.assetType === type
-                      ? 'dark:bg-cyan-500/15 bg-cyan-50 dark:border-cyan-500/50 border-cyan-500/60 text-cyan-600 dark:text-cyan-400 shadow-sm shadow-cyan-500/10'
-                      : 'dark:bg-slate-900/60 bg-slate-100 dark:border-slate-800 border-slate-300 dark:text-slate-400 text-slate-600 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200'
+                      ? 'bg-[var(--shell-bg)] border-[var(--text-primary)] text-[var(--text-primary)] font-bold shadow-xs'
+                      : 'bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)]'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5 flex-shrink-0" />
@@ -289,22 +294,22 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
 
           {/* Asset-specific info hints */}
           {formData.assetType === 'crypto' && (
-            <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs leading-relaxed">
+            <div className="p-3 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-secondary)] text-xs leading-relaxed">
               💡 <strong>Market &amp; Time-Based PnL:</strong> Crypto performance is automatically calculated from historical intervals — no buy price needed, perfectly tracking airdrops, rewards, and transfers.
             </div>
           )}
           {formData.assetType === 'stock' && (
-            <div className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-600 dark:text-violet-400 text-xs leading-relaxed">
-              📈 <strong>Yahoo Finance:</strong> Live prices are fetched automatically via Yahoo Finance. Use the standard exchange ticker (e.g. <code className="font-mono">AAPL</code>, <code className="font-mono">RELIANCE.NS</code>, <code className="font-mono">TCS.BO</code>).
+            <div className="p-3 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-secondary)] text-xs leading-relaxed">
+              📈 <strong>Yahoo Finance:</strong> Live prices are fetched automatically via Yahoo Finance. Use standard exchange tickers (e.g. <code className="font-mono text-[var(--text-primary)]">AAPL</code>, <code className="font-mono text-[var(--text-primary)]">RELIANCE.NS</code>, <code className="font-mono text-[var(--text-primary)]">TCS.BO</code>).
             </div>
           )}
           {formData.assetType === 'mutual_fund' && (
-            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs leading-relaxed">
-              🏦 <strong>MFapi.in (Live NAV):</strong> Search for your Indian mutual fund scheme below. The latest NAV is fetched daily from AMFI via MFapi.in — completely free, no API key required.
+            <div className="p-3 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-secondary)] text-xs leading-relaxed">
+              🏦 <strong>MFapi.in (Live NAV):</strong> Search for your Indian mutual fund scheme below. The latest NAV is fetched daily from AMFI via MFapi.in — free, automated, and accurate.
             </div>
           )}
           {formData.assetType === 'cash' && (
-            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs leading-relaxed">
+            <div className="p-3 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-secondary)] text-xs leading-relaxed">
               💵 <strong>INR Cash:</strong> Record your physical or digital cash (e.g. Purse, Google Pay, Bank Account). Enter the destination to organize your balances.
             </div>
           )}
@@ -312,25 +317,25 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
           {/* ── Mutual Fund Scheme Search ─────────────────────────────────── */}
           {isMutualFund && (
             <div ref={mfDropdownRef} className="relative">
-              <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase mb-1">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                 Search Mutual Fund Scheme *
               </label>
 
               {selectedScheme ? (
                 /* Selected scheme chip */
-                <div className="flex items-start justify-between p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                <div className="flex items-start justify-between p-3 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)]">
                   <div className="flex-1 min-w-0 mr-3">
                     <div className="flex items-center space-x-1.5 mb-0.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-                      <span className="text-xs font-bold text-emerald-500 dark:text-emerald-400">Scheme Selected</span>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[var(--positive)] flex-shrink-0" />
+                      <span className="text-xs font-semibold text-[var(--positive)]">Scheme Selected</span>
                     </div>
-                    <p className="text-sm font-semibold dark:text-white text-slate-900 leading-snug">{selectedScheme.schemeName}</p>
-                    <p className="text-xs text-slate-400 mt-0.5 font-mono">Code: {selectedScheme.schemeCode}</p>
+                    <p className="text-sm font-semibold text-[var(--text-primary)] leading-snug">{selectedScheme.schemeName}</p>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5 font-mono">Code: {selectedScheme.schemeCode}</p>
                   </div>
                   <button
                     type="button"
                     onClick={handleClearScheme}
-                    className="p-1.5 rounded-lg dark:hover:bg-slate-700 hover:bg-slate-200 text-slate-400 hover:text-rose-400 transition flex-shrink-0"
+                    className="p-1.5 rounded-lg hover:bg-[var(--card-bg)] text-[var(--text-muted)] hover:text-[var(--negative)] transition flex-shrink-0 cursor-pointer"
                     title="Change scheme"
                   >
                     <X className="w-4 h-4" />
@@ -341,8 +346,8 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
                 <div className="relative">
                   <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
                     {mfSearching
-                      ? <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
-                      : <Search className="w-4 h-4 text-slate-400" />
+                      ? <Loader2 className="w-4 h-4 text-[var(--text-muted)] animate-spin" />
+                      : <Search className="w-4 h-4 text-[var(--text-muted)]" />
                     }
                   </div>
                   <input
@@ -351,7 +356,7 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
                     value={mfQuery}
                     onChange={(e) => setMfQuery(e.target.value)}
                     onFocus={() => mfResults.length > 0 && setMfDropdownOpen(true)}
-                    className="w-full glass-input rounded-xl pl-9 pr-3.5 py-2.5 text-sm"
+                    className="w-full rounded-xl pl-9 pr-3.5 py-2.5 text-xs bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--text-primary)] transition"
                     autoComplete="off"
                   />
                 </div>
@@ -359,22 +364,22 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
 
               {/* Search results dropdown */}
               {mfDropdownOpen && mfResults.length > 0 && !selectedScheme && (
-                <div className="absolute z-50 w-full mt-1 rounded-xl border dark:border-slate-700 border-slate-200 dark:bg-slate-900 bg-white shadow-2xl shadow-black/30 max-h-56 overflow-y-auto">
+                <div className="absolute z-50 w-full mt-1 rounded-xl border border-[var(--card-border)] bg-[var(--panel-bg)] shadow-2xl max-h-56 overflow-y-auto">
                   {mfResults.slice(0, 20).map((scheme) => (
                     <button
                       type="button"
                       key={scheme.schemeCode}
                       onClick={() => handleSelectScheme(scheme)}
-                      className="w-full text-left px-4 py-3 hover:dark:bg-slate-800 hover:bg-slate-50 transition border-b dark:border-slate-800 border-slate-100 last:border-0 group"
+                      className="w-full text-left px-4 py-3 hover:bg-[var(--shell-bg)] transition border-b border-[var(--divider-1)] last:border-0 group cursor-pointer"
                     >
-                      <p className="text-xs font-semibold dark:text-white text-slate-900 leading-snug group-hover:text-cyan-500 dark:group-hover:text-cyan-400 transition">
+                      <p className="text-xs font-semibold text-[var(--text-primary)] leading-snug transition">
                         {scheme.schemeName}
                       </p>
-                      <p className="text-xs text-slate-400 mt-0.5 font-mono">Code: {scheme.schemeCode}</p>
+                      <p className="text-xs text-[var(--text-muted)] mt-0.5 font-mono">Code: {scheme.schemeCode}</p>
                     </button>
                   ))}
                   {mfResults.length > 20 && (
-                    <div className="px-4 py-2 text-xs text-slate-400 text-center">
+                    <div className="px-4 py-2 text-xs text-[var(--text-muted)] text-center">
                       Showing top 20 of {mfResults.length} results — refine your search
                     </div>
                   )}
@@ -382,8 +387,8 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
               )}
 
               {mfDropdownOpen && !mfSearching && mfResults.length === 0 && mfQuery.length >= 2 && (
-                <div className="absolute z-50 w-full mt-1 rounded-xl border dark:border-slate-700 border-slate-200 dark:bg-slate-900 bg-white shadow-xl p-4 text-center">
-                  <p className="text-xs text-slate-400">No schemes found for "<strong>{mfQuery}</strong>"</p>
+                <div className="absolute z-50 w-full mt-1 rounded-xl border border-[var(--card-border)] bg-[var(--panel-bg)] shadow-xl p-4 text-center">
+                  <p className="text-xs text-[var(--text-muted)]">No schemes found for "<strong>{mfQuery}</strong>"</p>
                 </div>
               )}
             </div>
@@ -393,7 +398,7 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
           {formData.assetType === 'cash' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                   Cash Destination / Where is it held? *
                 </label>
                 <input
@@ -401,30 +406,30 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
                   placeholder="e.g. Purse, Google Pay, HDFC Savings, Locker, Drawer…"
                   value={formData.walletOrAccount}
                   onChange={(e) => setFormData({ ...formData, walletOrAccount: e.target.value })}
-                  className="w-full glass-input rounded-xl px-3.5 py-2.5 text-sm font-semibold"
+                  className="w-full rounded-xl px-3.5 py-2.5 text-xs font-semibold bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--text-primary)] transition"
                   autoFocus
                   required
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                     Currency
                   </label>
                   <input
                     type="text"
                     value={formData.symbol || 'INR'}
                     onChange={(e) => setFormData({ ...formData, symbol: e.target.value.toUpperCase() })}
-                    className="w-full glass-input rounded-xl px-3.5 py-2.5 text-sm font-mono font-bold"
+                    className="w-full rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)] transition"
                     placeholder="INR"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                     Amount (₹) *
                   </label>
                   <div className="relative">
-                    <span className="absolute inset-y-0 left-3.5 flex items-center text-sm font-bold dark:text-slate-400 text-slate-500 pointer-events-none">
+                    <span className="absolute inset-y-0 left-3.5 flex items-center text-xs font-bold text-[var(--text-muted)] pointer-events-none">
                       ₹
                     </span>
                     <input
@@ -434,7 +439,7 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
                       placeholder="e.g. 5000"
                       value={formData.quantity}
                       onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                      className="w-full glass-input rounded-xl pl-8 pr-3.5 py-2.5 text-sm font-mono font-bold"
+                      className="w-full rounded-xl pl-8 pr-3.5 py-2.5 text-xs font-mono font-bold bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)] transition"
                       required
                     />
                   </div>
@@ -447,7 +452,7 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
           {!isMutualFund && formData.assetType !== 'cash' && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                   Asset Ticker / Symbol *
                 </label>
                 <input
@@ -455,12 +460,12 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
                   placeholder={formData.assetType === 'stock' ? 'e.g. AAPL, RELIANCE.NS' : 'e.g. BTC, ETH, SOL'}
                   value={formData.symbol}
                   onChange={(e) => setFormData({ ...formData, symbol: e.target.value.toUpperCase() })}
-                  className="w-full glass-input rounded-xl px-3.5 py-2.5 text-sm uppercase font-mono font-bold"
+                  className="w-full rounded-xl px-3.5 py-2.5 text-xs uppercase font-mono font-bold bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--text-primary)] transition"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                   Quantity *
                 </label>
                 <input
@@ -469,7 +474,7 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
                   placeholder="0.00"
                   value={formData.quantity}
                   onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                  className="w-full glass-input rounded-xl px-3.5 py-2.5 text-sm font-mono"
+                  className="w-full rounded-xl px-3.5 py-2.5 text-xs font-mono bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)] transition"
                   required
                 />
               </div>
@@ -479,7 +484,7 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
           {/* Quantity for Mutual Funds (separate row, full width) */}
           {isMutualFund && (
             <div>
-              <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase mb-1">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                 Units Held *
               </label>
               <input
@@ -488,7 +493,7 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
                 placeholder="e.g. 245.678"
                 value={formData.quantity}
                 onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                className="w-full glass-input rounded-xl px-3.5 py-2.5 text-sm font-mono"
+                className="w-full rounded-xl px-3.5 py-2.5 text-xs font-mono bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)] transition"
                 required
               />
             </div>
@@ -497,7 +502,7 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
           {/* Stock & Mutual Fund: Avg Buy Price */}
           {(formData.assetType === 'stock' || formData.assetType === 'mutual_fund') && (
             <div>
-              <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase mb-1">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                 {formData.assetType === 'mutual_fund' ? 'Avg Purchase NAV (₹) *' : 'Avg Buy Price (USD / ₹) *'}
               </label>
               <input
@@ -506,11 +511,11 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
                 placeholder={formData.assetType === 'mutual_fund' ? 'e.g. 85.50' : 'e.g. 185.50'}
                 value={formData.avgBuyPrice}
                 onChange={(e) => setFormData({ ...formData, avgBuyPrice: e.target.value })}
-                className="w-full glass-input rounded-xl px-3.5 py-2.5 text-sm font-mono"
+                className="w-full rounded-xl px-3.5 py-2.5 text-xs font-mono bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)] transition"
                 required
               />
               {formData.assetType === 'mutual_fund' && (
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-[var(--text-muted)] mt-1">
                   Enter the average NAV per unit at the time of purchase (in ₹). Current NAV is fetched live.
                 </p>
               )}
@@ -520,18 +525,18 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
           {/* Destination Wallet */}
           {wallets && wallets.length > 0 && (
             <div>
-              <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase mb-1 flex items-center space-x-1.5">
-                <Wallet className="w-3.5 h-3.5 text-cyan-500" />
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1 flex items-center space-x-1.5">
+                <Wallet className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
                 <span>Destination Wallet / Account</span>
               </label>
               <select
                 value={formData.walletId}
                 onChange={(e) => setFormData({ ...formData, walletId: e.target.value })}
-                className="w-full glass-input rounded-xl px-3.5 py-2.5 text-sm font-medium dark:bg-slate-900 bg-white dark:border-slate-700 border-slate-300 dark:text-white text-slate-900"
+                className="w-full rounded-xl px-3.5 py-2.5 text-xs font-medium bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]"
               >
-                <option value="">None (Unassigned / General Portfolio)</option>
+                <option value="" className="bg-[var(--panel-bg)] text-[var(--text-primary)]">None (Unassigned / General Portfolio)</option>
                 {wallets.map((w) => (
-                  <option key={w._id} value={w._id}>
+                  <option key={w._id} value={w._id} className="bg-[var(--panel-bg)] text-[var(--text-primary)]">
                     {w.name} ({w.type})
                   </option>
                 ))}
@@ -541,7 +546,7 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
 
           {/* Notes */}
           <div>
-            <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase mb-1">
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
               Notes (Optional)
             </label>
             <input
@@ -549,25 +554,25 @@ export const HoldingFormModal = ({ isOpen, onClose, onSave, holdingToEdit, walle
               placeholder="e.g. SIP, Staked on Ledger, Yield pool"
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full glass-input rounded-xl px-3.5 py-2.5 text-sm"
+              className="w-full rounded-xl px-3.5 py-2.5 text-xs bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--text-primary)] transition"
             />
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end space-x-3 pt-4 border-t dark:border-slate-800 border-slate-200">
+          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-[var(--divider-1)]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border dark:border-slate-700 border-slate-300 dark:hover:bg-slate-800 hover:bg-slate-200 dark:text-slate-300 text-slate-700 text-xs font-semibold transition cursor-pointer"
+              className="px-4 py-2 text-xs font-medium rounded-xl border border-[var(--card-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)] transition cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting || (isMutualFund && !selectedScheme && !formData.mfSchemeCode)}
-              className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary min-h-[38px] px-5 text-xs font-semibold rounded-xl disabled:opacity-50 transition cursor-pointer"
             >
-              <Save className="w-4 h-4" />
+              <Save className="w-4 h-4 text-[var(--btn-primary-text)]" />
               <span>{submitting ? 'Saving...' : holdingToEdit ? 'Update Holding' : 'Save Holding'}</span>
             </button>
           </div>

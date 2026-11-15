@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Wallet, Coins, Shield, CreditCard, Landmark, Vault, Palette, IndianRupee } from 'lucide-react';
 
-
 const WALLET_TYPES = [
   { id: 'crypto', label: 'Crypto Wallet / Web3', icon: Coins },
   { id: 'stock', label: 'Stock Brokerage', icon: Landmark },
@@ -88,66 +87,73 @@ export const WalletFormModal = ({ isOpen, onClose, onSave, walletToEdit }) => {
 
   return (
     <div className="modal-backdrop animate-fadeIn" onClick={onClose}>
-      <div className="modal-panel" style={{ maxWidth: 540, position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-        {/* Top color bar matching selected wallet color */}
+      <div
+        className="w-full max-w-lg rounded-2xl border border-[var(--card-border)] bg-[var(--panel-bg)] shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto text-[var(--text-primary)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Top color accent strip */}
         <div
           style={{
-            position: 'absolute', top: 0, left: 0, right: 0,
-            height: 4, borderRadius: '20px 20px 0 0',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 4,
+            borderRadius: '16px 16px 0 0',
             backgroundColor: color,
             transition: 'background-color 0.2s',
           }}
         />
 
-
-        <div className="flex items-center justify-between pb-4 mb-6 border-b dark:border-slate-800 border-slate-200">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between pb-4 mb-5 border-b border-[var(--divider-1)]">
           <div className="flex items-center space-x-3">
             <div
-              className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-lg"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-xs"
               style={{ backgroundColor: `${color}25`, borderColor: `${color}50`, borderWidth: 1 }}
             >
               <Wallet className="w-5 h-5" style={{ color }} />
             </div>
             <div>
-              <h2 className="text-xl font-bold dark:text-white text-slate-900 font-heading">
+              <h2 className="text-base sm:text-lg font-bold text-[var(--text-primary)] tracking-tight">
                 {walletToEdit ? 'Edit Wallet' : 'Add New Wallet'}
               </h2>
-              <p className="text-xs dark:text-slate-400 text-slate-500">Manage individual portfolio accounts & wallets</p>
+              <p className="text-xs text-[var(--text-muted)]">Manage individual portfolio accounts & wallets</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl dark:text-slate-400 text-slate-500 dark:hover:text-white hover:text-slate-900 dark:hover:bg-slate-800 hover:bg-slate-100 transition cursor-pointer"
+            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)] transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 dark:text-rose-400 text-xs font-semibold">
+          <div className="mb-4 p-3 rounded-xl bg-[var(--negative-bg)] border border-[var(--negative)]/20 text-[var(--negative)] text-xs font-medium">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Wallet Name */}
           <div>
-            <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
               Wallet / Account Name *
             </label>
             <input
               type="text"
-              placeholder="e.g. Binance Hot Wallet, Coinbase, Ledger Nano S, Robinhood"
+              placeholder="e.g. Binance Hot Wallet, Zerodha, Ledger, Robinhood"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-300 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 dark:text-white text-slate-900 placeholder-slate-400 text-sm outline-none transition shadow-xs"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] text-sm outline-none focus:border-[var(--text-primary)] transition"
               required
             />
           </div>
 
           {/* Wallet Type */}
           <div>
-            <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
               Wallet Category / Type
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -160,19 +166,18 @@ export const WalletFormModal = ({ isOpen, onClose, onSave, walletToEdit }) => {
                     type="button"
                     onClick={() => {
                       setType(item.id);
-                      // Smart defaults for cash wallets
                       if (item.id === 'cash') {
                         setIcon('rupee');
                         setColor('#10b981');
                       }
                     }}
-                    className={`flex items-center space-x-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                    className={`flex items-center space-x-2 px-3 py-2.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
                       isSelected
-                        ? 'dark:bg-cyan-500/15 bg-cyan-50 border-cyan-500 text-cyan-600 dark:text-cyan-300 shadow-sm'
-                        : 'dark:bg-slate-900/60 bg-slate-100 dark:border-slate-800 border-slate-300 dark:text-slate-400 text-slate-600 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200'
+                        ? 'bg-[var(--shell-bg)] border-[var(--text-primary)] text-[var(--text-primary)] font-bold shadow-xs'
+                        : 'bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)]'
                     }`}
                   >
-                    <TypeIcon className={`w-4 h-4 ${isSelected ? 'text-cyan-500 dark:text-cyan-400' : 'dark:text-slate-400 text-slate-500'}`} />
+                    <TypeIcon className="w-4 h-4" />
                     <span className="truncate">{item.label}</span>
                   </button>
                 );
@@ -182,25 +187,25 @@ export const WalletFormModal = ({ isOpen, onClose, onSave, walletToEdit }) => {
 
           {/* Cash wallet hint */}
           {type === 'cash' && (
-            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs leading-relaxed">
-              💰 <strong>Cash / INR Wallet:</strong> A dedicated space to track your INR cash across different locations — purse, Google Pay, PhonePe, Paytm, savings account, FD, and more. All values are stored in Indian Rupees.
+            <div className="p-3 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-secondary)] text-xs leading-relaxed">
+              💰 <strong>Cash / INR Wallet:</strong> A dedicated space to track your INR cash across different locations — purse, Google Pay, PhonePe, Paytm, savings account, FD, and more.
             </div>
           )}
 
           {/* Color Accent Picker */}
           <div>
-            <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase tracking-wider mb-2 flex items-center space-x-2">
-              <Palette className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 flex items-center space-x-1.5">
+              <Palette className="w-3.5 h-3.5" />
               <span>Theme Accent Color</span>
             </label>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2.5">
               {PRESET_COLORS.map((hex) => (
                 <button
                   key={hex}
                   type="button"
                   onClick={() => setColor(hex)}
                   className={`w-7 h-7 rounded-full border-2 transition transform hover:scale-110 cursor-pointer ${
-                    color === hex ? 'border-cyan-500 scale-110 ring-2 ring-cyan-500/40 shadow-sm' : 'border-transparent opacity-80'
+                    color === hex ? 'border-[var(--text-primary)] scale-110 ring-2 ring-[var(--text-primary)]/20 shadow-xs' : 'border-transparent opacity-85'
                   }`}
                   style={{ backgroundColor: hex }}
                 />
@@ -210,7 +215,7 @@ export const WalletFormModal = ({ isOpen, onClose, onSave, walletToEdit }) => {
 
           {/* Icon Picker */}
           <div>
-            <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
               Wallet Icon
             </label>
             <div className="flex items-center space-x-2">
@@ -224,8 +229,8 @@ export const WalletFormModal = ({ isOpen, onClose, onSave, walletToEdit }) => {
                     onClick={() => setIcon(item.id)}
                     className={`p-2.5 rounded-xl border transition cursor-pointer ${
                       isSelected
-                        ? 'dark:bg-slate-800 bg-cyan-50 border-cyan-500 text-cyan-600 dark:text-cyan-400 shadow-sm'
-                        : 'dark:bg-slate-900 bg-slate-100 dark:border-slate-800 border-slate-300 dark:text-slate-400 text-slate-600 hover:text-slate-900 dark:hover:text-slate-300 hover:bg-slate-200'
+                        ? 'bg-[var(--shell-bg)] border-[var(--text-primary)] text-[var(--text-primary)] font-bold shadow-xs'
+                        : 'bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)]'
                     }`}
                   >
                     <ItemIcon className="w-4 h-4" />
@@ -237,39 +242,31 @@ export const WalletFormModal = ({ isOpen, onClose, onSave, walletToEdit }) => {
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
               Description / Notes (Optional)
             </label>
             <input
               type="text"
-              placeholder="e.g. Staking wallet, long term hold, Robinhood stock account"
+              placeholder="e.g. Staking wallet, long term hold, Zerodha account"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl dark:bg-slate-900 bg-white border dark:border-slate-800 border-slate-300 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 dark:text-white text-slate-900 placeholder-slate-400 text-sm outline-none transition shadow-xs"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] text-xs outline-none focus:border-[var(--text-primary)] transition"
             />
           </div>
 
           {/* Submit Actions */}
-          <div className="pt-4 flex items-center justify-end space-x-3 border-t dark:border-slate-800 border-slate-200">
+          <div className="pt-4 flex items-center justify-end space-x-3 border-t border-[var(--divider-1)]">
             <button
               type="button"
               onClick={onClose}
-              style={{
-                padding: '9px 16px', borderRadius: 10,
-                border: '1px solid var(--card-border)',
-                background: 'var(--shell-bg)',
-                color: 'var(--text-secondary)',
-                fontSize: 13, fontWeight: 500,
-                cursor: 'pointer', fontFamily: 'inherit',
-              }}
+              className="px-4 py-2 text-xs font-medium rounded-xl border border-[var(--card-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)] transition cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="btn-primary"
-              style={{ opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}
+              className="btn-primary min-h-[38px] px-5 text-xs font-semibold rounded-xl disabled:opacity-50 transition cursor-pointer"
             >
               {submitting ? 'Saving…' : walletToEdit ? 'Save Changes' : 'Create Wallet'}
             </button>

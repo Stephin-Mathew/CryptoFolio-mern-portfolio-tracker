@@ -165,32 +165,34 @@ export const ScreenshotUploadModal = ({ isOpen, onClose, onExtracted, onExtracti
   const totalSize = selectedFiles.reduce((sum, { file }) => sum + file.size, 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
-      <div className="glass-panel w-full max-w-xl rounded-2xl border dark:border-slate-800 border-slate-200 shadow-2xl p-6 relative flex flex-col gap-5">
-
-        {/* Close */}
+    <div className="modal-backdrop animate-fadeIn" onClick={handleClose}>
+      <div
+        className="w-full max-w-xl rounded-2xl border border-[var(--card-border)] bg-[var(--panel-bg)] shadow-2xl p-6 relative flex flex-col gap-5 text-[var(--text-primary)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close Button */}
         <button
           onClick={handleClose}
           disabled={extracting}
-          className="absolute top-4 right-4 p-2 text-slate-400 dark:hover:text-white hover:text-slate-900 rounded-xl dark:bg-slate-900/60 bg-slate-100 dark:hover:bg-slate-800 hover:bg-slate-200 border dark:border-slate-800 border-slate-300 transition cursor-pointer"
+          className="absolute top-4 right-4 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)] transition cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Header */}
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 shrink-0">
-            <Sparkles className="w-5 h-5 text-white animate-pulse" />
+          <div className="w-10 h-10 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] flex items-center justify-center text-[var(--text-primary)] shrink-0">
+            <Sparkles className="w-5 h-5 text-[var(--text-primary)]" />
           </div>
           <div>
-            <h2 className="text-xl font-bold dark:text-white text-slate-900 font-heading">AI Screenshot Extraction</h2>
-            <p className="text-xs dark:text-slate-400 text-slate-500">Upload one or more exchange/wallet screenshots</p>
+            <h2 className="text-base font-bold text-[var(--text-primary)] tracking-tight">AI Screenshot Extraction</h2>
+            <p className="text-xs text-[var(--text-muted)]">Upload one or more brokerage, exchange, or wallet screenshots</p>
           </div>
         </div>
 
         {/* Error */}
         {error && (
-          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 dark:text-rose-400 text-xs flex items-center space-x-2 font-semibold">
+          <div className="p-3 rounded-xl bg-[var(--negative-bg)] border border-[var(--negative)]/20 text-[var(--negative)] text-xs flex items-center space-x-2 font-medium">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{error}</span>
           </div>
@@ -202,10 +204,10 @@ export const ScreenshotUploadModal = ({ isOpen, onClose, onExtracted, onExtracti
           onDragLeave={() => setIsDragOver(false)}
           onDrop={handleDrop}
           onClick={() => !extracting && fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-5 text-center transition cursor-pointer ${
+          className={`border-2 border-dashed rounded-xl p-6 text-center transition cursor-pointer ${
             isDragOver
-              ? 'border-cyan-500 bg-cyan-500/10'
-              : 'dark:border-slate-700 border-slate-300 dark:hover:border-slate-600 hover:border-slate-400 dark:bg-slate-900/40 bg-slate-50 dark:hover:bg-slate-900/60 hover:bg-slate-100'
+              ? 'border-[var(--btn-primary-bg)] bg-[var(--card-bg)]'
+              : 'border-[var(--card-border)] bg-[var(--shell-bg)] hover:border-[var(--text-muted)]'
           }`}
         >
           <input
@@ -218,18 +220,18 @@ export const ScreenshotUploadModal = ({ isOpen, onClose, onExtracted, onExtracti
           />
 
           {selectedFiles.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-4">
-              <div className="w-12 h-12 rounded-xl dark:bg-slate-800 bg-white border dark:border-slate-700 border-slate-300 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shadow-xs">
-                <Upload className="w-6 h-6" />
+            <div className="flex flex-col items-center gap-2 py-2">
+              <div className="w-11 h-11 rounded-xl bg-[var(--card-bg)] border border-[var(--card-border)] flex items-center justify-center text-[var(--text-primary)] shadow-xs">
+                <Upload className="w-5 h-5" />
               </div>
-              <p className="text-sm font-bold dark:text-white text-slate-900">Drop screenshots here or click to browse</p>
-              <p className="text-xs dark:text-slate-500 text-slate-500">Multiple images supported · PNG, JPG, WEBP · up to 10 MB each</p>
+              <p className="text-sm font-semibold text-[var(--text-primary)]">Drop screenshots here or click to browse</p>
+              <p className="text-xs text-[var(--text-muted)]">Multiple images supported · PNG, JPG, WEBP · up to 10 MB each</p>
             </div>
           ) : (
-            <div className="flex items-center justify-center gap-2 text-xs text-slate-400 py-1">
-              <Plus className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-              <span className="text-cyan-600 dark:text-cyan-400 font-bold">Add more images</span>
-              <span className="dark:text-slate-600 text-slate-500">· drag & drop or click</span>
+            <div className="flex items-center justify-center gap-2 text-xs py-1">
+              <Plus className="w-4 h-4 text-[var(--text-primary)]" />
+              <span className="text-[var(--text-primary)] font-semibold">Add more images</span>
+              <span className="text-[var(--text-muted)]">· drag & drop or click</span>
             </div>
           )}
         </div>
@@ -238,22 +240,28 @@ export const ScreenshotUploadModal = ({ isOpen, onClose, onExtracted, onExtracti
         {selectedFiles.length > 0 && (
           <div className="grid grid-cols-3 gap-3">
             {selectedFiles.map(({ file, previewUrl }, idx) => (
-              <div key={idx} className="relative group rounded-xl overflow-hidden border dark:border-slate-800 border-slate-200 dark:bg-slate-900 bg-slate-100 aspect-video flex items-center justify-center shadow-xs">
+              <div
+                key={idx}
+                className="relative group rounded-xl overflow-hidden border border-[var(--card-border)] bg-[var(--shell-bg)] aspect-video flex items-center justify-center shadow-xs"
+              >
                 <img
                   src={previewUrl}
                   alt={file.name}
                   className="w-full h-full object-cover"
                 />
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center gap-1">
+                {/* Hover Overlay */}
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center gap-1.5 p-2">
                   <button
                     onClick={(e) => { e.stopPropagation(); removeFile(idx); }}
                     disabled={extracting}
-                    className="p-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/40 text-rose-400 transition cursor-pointer"
+                    className="p-1.5 rounded-lg bg-[var(--negative-bg)] text-[var(--negative)] hover:opacity-80 transition cursor-pointer"
+                    title="Remove image"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
-                  <span className="text-[10px] text-slate-300 truncate max-w-[90%] px-1 text-center font-medium">{file.name}</span>
+                  <span className="text-[10px] text-white truncate max-w-full text-center font-medium">
+                    {file.name}
+                  </span>
                 </div>
               </div>
             ))}
@@ -262,10 +270,10 @@ export const ScreenshotUploadModal = ({ isOpen, onClose, onExtracted, onExtracti
 
         {/* File Count Summary */}
         {selectedFiles.length > 0 && (
-          <div className="flex items-center space-x-2 text-xs dark:text-slate-400 text-slate-600 -mt-2">
-            <ImageIcon className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+          <div className="flex items-center space-x-2 text-xs text-[var(--text-muted)] -mt-2">
+            <ImageIcon className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
             <span>
-              <span className="dark:text-white text-slate-900 font-bold">{selectedFiles.length}</span> image{selectedFiles.length !== 1 ? 's' : ''} selected
+              <span className="text-[var(--text-primary)] font-semibold">{selectedFiles.length}</span> image{selectedFiles.length !== 1 ? 's' : ''} selected
               &nbsp;·&nbsp;
               {(totalSize / 1024).toFixed(0)} KB total
             </span>
@@ -273,28 +281,28 @@ export const ScreenshotUploadModal = ({ isOpen, onClose, onExtracted, onExtracti
         )}
 
         {/* Context Text Input */}
-        <div className="space-y-2">
-          <label className="flex items-center space-x-1.5 text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase tracking-wider">
-            <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span>Additional Context <span className="dark:text-slate-500 text-slate-400 normal-case font-normal">(optional)</span></span>
+        <div className="space-y-1.5">
+          <label className="flex items-center space-x-1.5 text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+            <FileText className="w-3.5 h-3.5" />
+            <span>Additional Context <span className="text-[var(--text-muted)] normal-case font-normal">(optional)</span></span>
           </label>
           <textarea
             value={contextText}
             onChange={(e) => setContextText(e.target.value)}
             disabled={extracting}
-            placeholder="e.g. This is my Binance spot wallet. Ignore USDT dust. Treat all assets as crypto unless it looks like a stock ticker."
+            placeholder="e.g. This is my Groww spot wallet. Treat all assets as Indian stocks or mutual funds."
             rows={3}
-            className="w-full px-3 py-2.5 rounded-xl dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 dark:text-slate-200 text-slate-800 text-xs placeholder-slate-400 resize-none outline-none transition shadow-xs"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] text-xs placeholder:text-[var(--text-muted)] resize-none outline-none focus:border-[var(--text-primary)] transition"
           />
         </div>
 
         {/* Footer Actions */}
-        <div className="pt-4 border-t dark:border-slate-800 border-slate-200 flex items-center justify-end space-x-3">
+        <div className="pt-4 border-t border-[var(--divider-1)] flex items-center justify-end space-x-3">
           <button
             type="button"
             onClick={handleClose}
             disabled={extracting}
-            className="px-4 py-2.5 rounded-xl border dark:border-slate-700 border-slate-300 dark:hover:bg-slate-800 hover:bg-slate-200 dark:text-slate-300 text-slate-700 text-xs font-semibold transition cursor-pointer"
+            className="px-4 py-2 text-xs font-medium rounded-xl border border-[var(--card-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)] transition cursor-pointer"
           >
             Cancel
           </button>
@@ -303,16 +311,16 @@ export const ScreenshotUploadModal = ({ isOpen, onClose, onExtracted, onExtracti
             type="button"
             onClick={handleExtract}
             disabled={selectedFiles.length === 0 || extracting}
-            className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-cyan-500/20 transition cursor-pointer disabled:opacity-50"
+            className="btn-primary min-h-[38px] px-5 text-xs font-semibold rounded-xl disabled:opacity-50 transition cursor-pointer"
           >
             {extracting ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin text-cyan-200" />
+                <Loader2 className="w-4 h-4 animate-spin text-[var(--btn-primary-text)]" />
                 <span>Analyzing screenshot…</span>
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4 text-cyan-200" />
+                <Sparkles className="w-4 h-4 text-[var(--btn-primary-text)]" />
                 <span>Extract from {selectedFiles.length || 0} Image{selectedFiles.length !== 1 ? 's' : ''}</span>
               </>
             )}

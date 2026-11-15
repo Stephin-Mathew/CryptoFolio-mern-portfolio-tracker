@@ -10,14 +10,15 @@ import {
   CheckCircle,
   Sparkles,
   ArrowRight,
-  ShieldCheck,
   Search,
   CheckCircle2,
   Loader2,
+  Check,
   TrendingUp,
 } from 'lucide-react';
 import api from '../api/axiosInstance';
 import { ApiMappingModal } from './ApiMappingModal';
+import { AssetLogo } from './AssetLogo';
 
 const COMMON_TICKERS = ['BTC', 'ETH', 'SOL', 'USDT', 'USDC', 'BNB', 'AVAX', 'SUI', 'ARB', 'OP'];
 
@@ -30,9 +31,10 @@ export const PriceEditModal = ({
   onResetPrice,
 }) => {
   const safeSymbol = String(symbol || '');
-  const priceObj = typeof currentPriceInfo === 'object' && currentPriceInfo !== null
-    ? currentPriceInfo
-    : { price: Number(currentPriceInfo) || 0 };
+  const priceObj =
+    typeof currentPriceInfo === 'object' && currentPriceInfo !== null
+      ? currentPriceInfo
+      : { price: Number(currentPriceInfo) || 0 };
 
   const [activeTab, setActiveTab] = useState('fixed'); // 'fixed' | 'mapped'
   const [priceInput, setPriceInput] = useState('');
@@ -53,7 +55,8 @@ export const PriceEditModal = ({
   const currentPriceInr = Number(priceObj.priceInr || priceObj.navInr || 0);
   const isCustom = !!priceObj.isCustom;
   const mappedSymbol = priceObj.mappedSymbol || '';
-  const isINRAsset = priceObj.currency === 'INR' || safeSymbol.endsWith('.NS') || safeSymbol.endsWith('.BO');
+  const isINRAsset =
+    priceObj.currency === 'INR' || safeSymbol.endsWith('.NS') || safeSymbol.endsWith('.BO');
 
   const fetchLiveQuote = async (tickerToFetch) => {
     const t = String(tickerToFetch || mappedTickerInput || '').trim();
@@ -76,7 +79,7 @@ export const PriceEditModal = ({
       setVerifiedQuote(null);
       setError(
         err.response?.data?.message ||
-        `Could not fetch live quote for ${t}. If it's an Indian stock, try appending .NS (e.g. ${t}.NS)`
+          `Could not fetch live quote for ${t}. If it's an Indian stock, try appending .NS (e.g. ${t}.NS)`
       );
     } finally {
       setFetchingQuote(false);
@@ -93,7 +96,6 @@ export const PriceEditModal = ({
         setActiveTab('mapped');
         setMappedTickerInput(mappedSymbol);
         setPriceInput(currentPrice > 0 ? String(currentPrice) : '');
-        // Auto-fetch quote for mapped symbol
         fetchLiveQuote(mappedSymbol);
       } else {
         setActiveTab('fixed');
@@ -170,7 +172,6 @@ export const PriceEditModal = ({
     setBustingCache(true);
     try {
       const res = await api.delete(`/prices/cache/${encodeURIComponent(safeSymbol)}`);
-      // Refresh the display price after cache bust
       if (res.data?.price) {
         const freshPrice = res.data.price;
         const inrVal = freshPrice.priceInr ?? freshPrice.navInr ?? 0;
@@ -178,7 +179,6 @@ export const PriceEditModal = ({
         setPriceInput(displayVal > 0 ? String(displayVal) : '');
       }
       onClose();
-      // Trigger parent refresh so new price shows immediately
       if (typeof onResetPrice === 'function') onResetPrice(safeSymbol);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to clear price cache');
@@ -188,308 +188,354 @@ export const PriceEditModal = ({
   };
 
   const formatUSD = (num) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 6 }).format(num || 0);
+    new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 6,
+    }).format(num || 0);
 
   const formatINR = (num) =>
-    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num || 0);
+    new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num || 0);
 
-  const currentDisplayFormatted = isINRAsset && currentPriceInr > 0 ? formatINR(currentPriceInr) : formatUSD(currentPrice);
+  const currentDisplayFormatted =
+    isINRAsset && currentPriceInr > 0 ? formatINR(currentPriceInr) : formatUSD(currentPrice);
 
   if (!isOpen || !symbol) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
-      <div className="glass-panel w-full max-w-lg rounded-2xl border dark:border-slate-800 border-slate-200 shadow-2xl p-6 relative flex flex-col gap-5">
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          disabled={saving || resetting}
-          className="absolute top-4 right-4 p-2 text-slate-400 dark:hover:text-white hover:text-slate-900 rounded-xl dark:bg-slate-900/60 bg-slate-100 dark:hover:bg-slate-800 hover:bg-slate-200 border dark:border-slate-800 border-slate-300 transition cursor-pointer"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+      <div
+        className="w-full max-w-lg rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] shadow-2xl flex flex-col overflow-hidden max-h-[90vh]"
+        style={{ color: 'var(--text-primary)' }}
+      >
         {/* Modal Header */}
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 shrink-0">
-            <DollarSign className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h2 className="text-xl font-bold dark:text-white text-slate-900 font-heading">
-                Edit Price for <span className="text-cyan-500 dark:text-cyan-400 font-mono">{symbol}</span>
-              </h2>
-              {isCustom && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                  {mappedSymbol ? `Mapped to ${mappedSymbol}` : 'Custom Override'}
-                </span>
-              )}
-            </div>
-            <p className="text-xs dark:text-slate-400 text-slate-500">
-              Current Live Valuation: <span className="font-mono font-bold dark:text-slate-200 text-slate-800">{currentDisplayFormatted}</span>
-            </p>
-          </div>
-        </div>
-
-        {/* Error Alert */}
-        {error && (
-          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 dark:text-rose-400 text-xs flex items-center space-x-2 font-semibold">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* Mode Tabs */}
-        <div className="grid grid-cols-2 gap-2 p-1 rounded-xl dark:bg-slate-900/80 bg-slate-100 border dark:border-slate-800 border-slate-300">
-          <button
-            type="button"
-            onClick={() => setActiveTab('fixed')}
-            className={`flex items-center justify-center space-x-2 py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activeTab === 'fixed'
-                ? 'dark:bg-slate-800 bg-white text-cyan-600 dark:text-cyan-400 shadow-sm border dark:border-slate-700 border-slate-200'
-                : 'dark:text-slate-400 text-slate-600 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Lock className="w-3.5 h-3.5" />
-            <span>Fixed Custom Price</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('mapped')}
-            className={`flex items-center justify-center space-x-2 py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activeTab === 'mapped'
-                ? 'dark:bg-slate-800 bg-white text-indigo-600 dark:text-indigo-400 shadow-sm border dark:border-slate-700 border-slate-200'
-                : 'dark:text-slate-400 text-slate-600 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Link2 className="w-3.5 h-3.5" />
-            <span>Map to Market Ticker</span>
-          </button>
-        </div>
-
-        {/* Tab 1: Fixed Custom Price */}
-        {activeTab === 'fixed' && (
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase tracking-wider">
-                  Custom Price ({customCurrency === 'INR' ? '₹ INR' : '$ USD'})
-                </label>
-                <div className="flex items-center dark:bg-slate-900 bg-slate-200 p-0.5 rounded-lg border dark:border-slate-800 border-slate-300">
-                  <button
-                    type="button"
-                    onClick={() => setCustomCurrency('INR')}
-                    className={`px-2 py-0.5 text-[10px] font-bold rounded transition cursor-pointer ${
-                      customCurrency === 'INR' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400'
-                    }`}
-                  >
-                    ₹ INR
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCustomCurrency('USD')}
-                    className={`px-2 py-0.5 text-[10px] font-bold rounded transition cursor-pointer ${
-                      customCurrency === 'USD' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400'
-                    }`}
-                  >
-                    $ USD
-                  </button>
-                </div>
+        <div className="px-5 py-4 border-b border-[var(--divider-2)] flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <AssetLogo
+              symbol={safeSymbol}
+              assetType={isINRAsset ? 'stock' : 'crypto'}
+              customUrl={priceObj.logoUrl}
+              size={38}
+            />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base font-bold text-[var(--text-primary)] tracking-tight">
+                  Price Mapping · <span className="font-mono text-cyan-500">{symbol}</span>
+                </h3>
+                {isCustom && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                    {mappedSymbol ? `Mapped to ${mappedSymbol}` : 'Custom Override'}
+                  </span>
+                )}
               </div>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-mono font-bold dark:text-slate-500 text-slate-400">
-                  {customCurrency === 'INR' ? '₹' : '$'}
-                </span>
-                <input
-                  type="number"
-                  step="any"
-                  min="0"
-                  value={priceInput}
-                  onChange={(e) => setPriceInput(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full pl-8 pr-4 py-2.5 rounded-xl dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 dark:text-white text-slate-900 text-sm font-mono font-bold outline-none transition shadow-xs"
-                />
-              </div>
-            </div>
-
-            {/* Lock Toggle Checkbox */}
-            <label className="flex items-start space-x-3 p-3 rounded-xl dark:bg-slate-900/60 bg-slate-50 border dark:border-slate-800 border-slate-200 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isLocked}
-                onChange={(e) => setIsLocked(e.target.checked)}
-                className="mt-0.5 rounded text-cyan-500 focus:ring-cyan-500 dark:border-slate-700"
-              />
-              <div className="text-xs">
-                <span className="font-bold dark:text-slate-200 text-slate-800 flex items-center space-x-1">
-                  <Lock className="w-3 h-3 text-cyan-500 inline mr-1" />
-                  Lock Custom Price
-                </span>
-                <p className="dark:text-slate-400 text-slate-500 text-[11px] mt-0.5 leading-relaxed">
-                  Prevents automated background refreshes and the "Refresh Prices" button from overwriting this value.
-                </p>
-              </div>
-            </label>
-          </div>
-        )}
-
-        {/* Tab 2: Map to Market Ticker */}
-        {activeTab === 'mapped' && (
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase tracking-wider">
-                  Target Market Symbol
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowMappingModal(true)}
-                  className="text-[11px] font-bold text-cyan-500 hover:text-cyan-400 flex items-center space-x-1 transition cursor-pointer"
-                >
-                  <Search className="w-3 h-3" />
-                  <span>Advanced Search (MF / Stocks)</span>
-                </button>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <input
-                  type="text"
-                  value={mappedTickerInput}
-                  onChange={(e) => setMappedTickerInput(e.target.value.toUpperCase())}
-                  placeholder="e.g. CANBK.NS, BTC, ETH, 120503"
-                  onKeyDown={(e) => e.key === 'Enter' && fetchLiveQuote(mappedTickerInput)}
-                  className="flex-1 px-3.5 py-2.5 rounded-xl dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 dark:text-white text-slate-900 text-sm font-mono font-bold uppercase outline-none transition shadow-xs"
-                />
-                <button
-                  type="button"
-                  onClick={() => fetchLiveQuote(mappedTickerInput)}
-                  disabled={fetchingQuote || !mappedTickerInput.trim()}
-                  className="flex items-center space-x-1 px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition cursor-pointer disabled:opacity-50 shrink-0"
-                >
-                  {fetchingQuote ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                  <span>Test API</span>
-                </button>
-              </div>
-              <p className="text-[11px] dark:text-slate-400 text-slate-500 leading-relaxed">
-                Connect this holding to live quotes from Yahoo Finance (Stocks), MFapi.in (Mutual Funds), or CoinMarketCap (Crypto).
+              <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
+                Configure live price feed mapping or set a locked custom valuation
               </p>
             </div>
+          </div>
 
-            {/* Verified Live Quote Card */}
-            {verifiedQuote && (
-              <div className="p-3.5 rounded-xl dark:bg-slate-900/90 bg-indigo-50/60 border dark:border-indigo-500/30 border-indigo-500/40 shadow-md space-y-1.5 animate-fadeIn">
+          <button
+            onClick={onClose}
+            disabled={saving || resetting}
+            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)] transition cursor-pointer"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Valuation Summary Strip & Mode Tabs */}
+        <div className="px-5 py-3 bg-[var(--shell-bg)] border-b border-[var(--divider-2)] flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <span className="text-[10px] uppercase font-semibold text-[var(--text-muted)] tracking-wider block">
+              Current Live Valuation
+            </span>
+            <span className="font-mono font-bold text-sm text-[var(--text-primary)]">
+              {currentDisplayFormatted}
+            </span>
+          </div>
+
+          {/* Mode Tabs Pills */}
+          <div className="flex items-center bg-[var(--card-bg)] border border-[var(--divider-2)] rounded-lg p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setActiveTab('fixed')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-medium transition cursor-pointer ${
+                activeTab === 'fixed'
+                  ? 'bg-[var(--shell-bg)] text-[var(--text-primary)] shadow-2xs font-semibold'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <Lock size={12} />
+              <span>Fixed Price</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('mapped')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-medium transition cursor-pointer ${
+                activeTab === 'mapped'
+                  ? 'bg-[var(--shell-bg)] text-[var(--text-primary)] shadow-2xs font-semibold'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <Link2 size={12} />
+              <span>Map to Ticker</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Modal Body */}
+        <div className="p-5 overflow-y-auto space-y-4">
+          {/* Error Alert */}
+          {error && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2 font-medium">
+              <AlertCircle size={15} className="shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Tab 1: Fixed Custom Price */}
+          {activeTab === 'fixed' && (
+            <div className="space-y-4">
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                    <span className="text-xs font-bold text-emerald-500 uppercase tracking-wider">
-                      Live Quote Verified
-                    </span>
+                  <label className="block text-xs font-semibold text-[var(--text-primary)] uppercase tracking-wider">
+                    Custom Price Value
+                  </label>
+                  {/* Currency Toggle */}
+                  <div className="flex items-center bg-[var(--shell-bg)] border border-[var(--divider-2)] p-0.5 rounded-lg text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setCustomCurrency('INR')}
+                      className={`px-2 py-0.5 text-[11px] font-bold rounded transition cursor-pointer ${
+                        customCurrency === 'INR'
+                          ? 'bg-cyan-600 text-white shadow-xs'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                      }`}
+                    >
+                      ₹ INR
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCustomCurrency('USD')}
+                      className={`px-2 py-0.5 text-[11px] font-bold rounded transition cursor-pointer ${
+                        customCurrency === 'USD'
+                          ? 'bg-cyan-600 text-white shadow-xs'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                      }`}
+                    >
+                      $ USD
+                    </button>
                   </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold dark:bg-slate-800 bg-white text-slate-600 dark:text-slate-300 border dark:border-slate-700 border-slate-200">
-                    Source: {verifiedQuote.source}
+                </div>
+
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-mono font-bold text-[var(--text-muted)]">
+                    {customCurrency === 'INR' ? '₹' : '$'}
                   </span>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    value={priceInput}
+                    onChange={(e) => setPriceInput(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full pl-8 pr-4 py-2.5 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] text-sm font-mono font-bold focus:outline-none focus:border-cyan-500 transition placeholder:text-[var(--text-muted)]"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              {/* Lock Toggle Card */}
+              <label className="flex items-start gap-3 p-3.5 rounded-xl bg-[var(--shell-bg)] border border-[var(--divider-2)] cursor-pointer hover:border-[var(--card-border)] transition select-none">
+                <input
+                  type="checkbox"
+                  checked={isLocked}
+                  onChange={(e) => setIsLocked(e.target.checked)}
+                  className="mt-0.5 rounded text-cyan-600 focus:ring-cyan-500 border-[var(--card-border)]"
+                />
+                <div className="text-xs">
+                  <span className="font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                    <Lock size={13} className="text-cyan-500" />
+                    Lock Custom Price
+                  </span>
+                  <p className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
+                    Prevents automated 5-minute background cron jobs and the manual "Refresh Prices" button from overwriting this custom value.
+                  </p>
+                </div>
+              </label>
+            </div>
+          )}
+
+          {/* Tab 2: Map to Market Ticker */}
+          {activeTab === 'mapped' && (
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-[var(--text-primary)] uppercase tracking-wider">
+                    Target Market Symbol
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowMappingModal(true)}
+                    className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1 transition cursor-pointer"
+                  >
+                    <Search size={13} />
+                    <span>Search Stocks / Funds</span>
+                  </button>
                 </div>
 
-                {verifiedQuote.schemeName && (
-                  <p className="text-xs font-semibold dark:text-white text-slate-900 leading-snug">
-                    {verifiedQuote.schemeName}
-                  </p>
-                )}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={mappedTickerInput}
+                    onChange={(e) => setMappedTickerInput(e.target.value.toUpperCase())}
+                    placeholder="e.g. CANBK.NS, BTC, ETH, 120503"
+                    onKeyDown={(e) => e.key === 'Enter' && fetchLiveQuote(mappedTickerInput)}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] text-sm font-mono font-bold uppercase focus:outline-none focus:border-cyan-500 transition placeholder:text-[var(--text-muted)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fetchLiveQuote(mappedTickerInput)}
+                    disabled={fetchingQuote || !mappedTickerInput.trim()}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs transition cursor-pointer disabled:opacity-50 shrink-0 shadow-xs"
+                  >
+                    {fetchingQuote ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                    <span>Test API</span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                  Connect this holding to live quotes from Yahoo Finance (Stocks), MFapi.in (Mutual Funds), or CoinMarketCap (Crypto).
+                </p>
+              </div>
 
-                <div className="flex items-baseline justify-between pt-1">
-                  <div>
-                    <span className="text-xl font-extrabold font-mono dark:text-white text-slate-900">
-                      {verifiedQuote.formattedPrice}
-                    </span>
-                    <span className="text-xs text-slate-400 font-mono ml-2">
-                      ({verifiedQuote.currency})
+              {/* Verified Live Quote Card */}
+              {verifiedQuote && (
+                <div className="p-3.5 rounded-xl bg-[var(--shell-bg)] border border-emerald-500/30 shadow-2xs space-y-2 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 size={14} className="text-emerald-500" />
+                      <span className="text-[11px] font-bold text-emerald-500 uppercase tracking-wider">
+                        Live Quote Verified
+                      </span>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold bg-[var(--card-bg)] text-[var(--text-muted)] border border-[var(--divider-2)]">
+                      Source: {verifiedQuote.source}
                     </span>
                   </div>
 
-                  {verifiedQuote.change24h !== undefined && verifiedQuote.change24h !== null && (
-                    <span className={`text-xs font-bold font-mono ${
-                      Number(verifiedQuote.change24h) >= 0 ? 'text-emerald-500' : 'text-rose-500'
-                    }`}>
-                      {Number(verifiedQuote.change24h) >= 0 ? '+' : ''}{Number(verifiedQuote.change24h).toFixed(2)}% (24H)
-                    </span>
+                  {verifiedQuote.schemeName && (
+                    <p className="text-xs font-semibold text-[var(--text-primary)] leading-snug">
+                      {verifiedQuote.schemeName}
+                    </p>
                   )}
+
+                  <div className="flex items-baseline justify-between pt-1">
+                    <div>
+                      <span className="text-xl font-extrabold font-mono text-[var(--text-primary)]">
+                        {verifiedQuote.formattedPrice}
+                      </span>
+                      <span className="text-xs text-[var(--text-muted)] font-mono ml-2">
+                        ({verifiedQuote.currency})
+                      </span>
+                    </div>
+
+                    {verifiedQuote.change24h !== undefined && verifiedQuote.change24h !== null && (
+                      <span
+                        className={`text-xs font-bold font-mono ${
+                          Number(verifiedQuote.change24h) >= 0 ? 'text-emerald-500' : 'text-rose-500'
+                        }`}
+                      >
+                        {Number(verifiedQuote.change24h) >= 0 ? '+' : ''}
+                        {Number(verifiedQuote.change24h).toFixed(2)}% (24H)
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-between text-[11px] text-[var(--text-muted)] font-mono border-t border-[var(--divider-2)]">
+                    <span>
+                      Mapping: <strong className="text-cyan-500">{safeSymbol}</strong> &rarr;{' '}
+                      <strong className="text-indigo-400">{verifiedQuote.symbol}</strong>
+                    </span>
+                    <span>Type: {verifiedQuote.assetType}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Quick Append & Suggestions */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[11px] font-semibold text-[var(--text-muted)]">
+                    Popular Tickers:
+                  </span>
+                  <div className="flex items-center gap-1 text-[11px]">
+                    <span className="text-[var(--text-muted)]">Append:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const base = mappedTickerInput.replace(/\.(NS|BO)$/i, '') || safeSymbol;
+                        const newSym = `${base}.NS`;
+                        setMappedTickerInput(newSym);
+                        fetchLiveQuote(newSym);
+                      }}
+                      className="font-mono text-cyan-500 hover:underline cursor-pointer"
+                    >
+                      .NS (NSE)
+                    </button>
+                    <span className="text-[var(--text-muted)]">|</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const base = mappedTickerInput.replace(/\.(NS|BO)$/i, '') || safeSymbol;
+                        const newSym = `${base}.BO`;
+                        setMappedTickerInput(newSym);
+                        fetchLiveQuote(newSym);
+                      }}
+                      className="font-mono text-cyan-500 hover:underline cursor-pointer"
+                    >
+                      .BO (BSE)
+                    </button>
+                  </div>
                 </div>
 
-                <div className="pt-1.5 flex items-center justify-between text-[11px] text-slate-400 font-mono border-t dark:border-slate-800 border-slate-200">
-                  <span>Mapping: <strong className="text-cyan-500">{safeSymbol}</strong> &rarr; <strong className="text-indigo-400">{verifiedQuote.symbol}</strong></span>
-                  <span>Type: {verifiedQuote.assetType}</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {COMMON_TICKERS.filter((t) => t !== safeSymbol.toUpperCase()).map((ticker) => (
+                    <button
+                      key={ticker}
+                      type="button"
+                      onClick={() => {
+                        setMappedTickerInput(ticker);
+                        fetchLiveQuote(ticker);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition cursor-pointer border ${
+                        mappedTickerInput === ticker
+                          ? 'bg-cyan-500/15 border-cyan-500 text-cyan-600 dark:text-cyan-400 font-bold'
+                          : 'bg-[var(--shell-bg)] border-[var(--divider-2)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--card-border)]'
+                      }`}
+                    >
+                      {ticker}
+                    </button>
+                  ))}
                 </div>
-              </div>
-            )}
-
-            {/* Quick Suggestions & Indian Suffixes */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] font-semibold dark:text-slate-400 text-slate-500">
-                  Popular Crypto:
-                </span>
-                <div className="flex items-center space-x-1 text-[11px]">
-                  <span className="text-slate-400">Append:</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const base = mappedTickerInput.replace(/\.(NS|BO)$/i, '') || safeSymbol;
-                      const newSym = `${base}.NS`;
-                      setMappedTickerInput(newSym);
-                      fetchLiveQuote(newSym);
-                    }}
-                    className="font-mono text-cyan-500 hover:underline cursor-pointer"
-                  >
-                    .NS (NSE)
-                  </button>
-                  <span className="text-slate-500">|</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const base = mappedTickerInput.replace(/\.(NS|BO)$/i, '') || safeSymbol;
-                      const newSym = `${base}.BO`;
-                      setMappedTickerInput(newSym);
-                      fetchLiveQuote(newSym);
-                    }}
-                    className="font-mono text-cyan-500 hover:underline cursor-pointer"
-                  >
-                    .BO (BSE)
-                  </button>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {COMMON_TICKERS.filter((t) => t !== safeSymbol.toUpperCase()).map((ticker) => (
-                  <button
-                    key={ticker}
-                    type="button"
-                    onClick={() => {
-                      setMappedTickerInput(ticker);
-                      fetchLiveQuote(ticker);
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition cursor-pointer border ${
-                      mappedTickerInput === ticker
-                        ? 'bg-indigo-500/20 border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                        : 'dark:bg-slate-900 bg-slate-100 dark:border-slate-800 border-slate-300 dark:text-slate-400 text-slate-600 hover:border-indigo-500/40'
-                    }`}
-                  >
-                    {ticker}
-                  </button>
-                ))}
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Modal Footer */}
-        <div className="pt-4 border-t dark:border-slate-800 border-slate-200 flex items-center justify-between gap-3">
+        <div className="px-5 py-3.5 border-t border-[var(--divider-2)] bg-[var(--shell-bg)] flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             {isCustom && (
               <button
                 type="button"
                 onClick={handleReset}
                 disabled={saving || resetting || bustingCache}
-                className="px-3 py-2 rounded-xl text-rose-500 hover:bg-rose-500/10 border border-rose-500/20 text-xs font-semibold transition cursor-pointer disabled:opacity-50"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-500 hover:bg-rose-500/10 border border-rose-500/20 transition cursor-pointer disabled:opacity-50"
               >
                 {resetting ? 'Resetting...' : 'Reset to Live'}
               </button>
@@ -498,23 +544,20 @@ export const PriceEditModal = ({
               type="button"
               onClick={handleCacheBust}
               disabled={saving || resetting || bustingCache}
-              title="Delete the cached price from the database and fetch a fresh one from the correct source"
-              className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-amber-500 hover:bg-amber-500/10 border border-amber-500/20 text-xs font-semibold transition cursor-pointer disabled:opacity-50"
+              title="Delete the cached price from the database and fetch a fresh one from the source"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-500 hover:bg-amber-500/10 border border-amber-500/20 transition cursor-pointer disabled:opacity-50"
             >
-              {bustingCache ? (
-                <><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span>Refreshing...</span></>
-              ) : (
-                <><RefreshCw className="w-3.5 h-3.5" /><span>Force Refresh Cache</span></>
-              )}
+              <RefreshCw size={12} className={bustingCache ? 'animate-spin' : ''} />
+              <span>{bustingCache ? 'Refreshing...' : 'Force Refresh Cache'}</span>
             </button>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
               disabled={saving || resetting}
-              className="px-4 py-2.5 rounded-xl border dark:border-slate-700 border-slate-300 dark:hover:bg-slate-800 hover:bg-slate-200 dark:text-slate-300 text-slate-700 text-xs font-semibold transition cursor-pointer"
+              className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--card-bg)] border border-[var(--card-border)] transition cursor-pointer"
             >
               Cancel
             </button>
@@ -523,16 +566,16 @@ export const PriceEditModal = ({
               type="button"
               onClick={handleSave}
               disabled={saving || resetting}
-              className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-cyan-500/20 transition cursor-pointer disabled:opacity-50"
+              className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-500 shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               {saving ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <Loader2 size={13} className="animate-spin" />
                   <span>Saving...</span>
                 </>
               ) : (
                 <>
-                  <CheckCircle className="w-4 h-4" />
+                  <Check size={13} />
                   <span>{activeTab === 'mapped' ? 'Save & Link Ticker' : 'Save Price'}</span>
                 </>
               )}

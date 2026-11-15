@@ -22,6 +22,7 @@ import {
   Sun,
   Moon,
   Menu,
+  Terminal,
 } from 'lucide-react';
 
 const ICON_MAP = {
@@ -232,6 +233,40 @@ export const Sidebar = ({
                   </div>
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono font-bold">
                     {wallets.length}
+                  </span>
+                </>
+              )}
+            </NavLink>
+
+            <NavLink
+              to="/dev/price-logs"
+              end
+              onClick={onClose}
+              title={isCollapsed ? 'Price Fetch Logs' : undefined}
+              className={({ isActive }) =>
+                isCollapsed
+                  ? `flex items-center justify-center w-11 h-11 mx-auto rounded-xl transition ${
+                      isActive
+                        ? 'bg-cyan-500/15 text-cyan-500 dark:text-cyan-400 border border-cyan-500/30 shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50'
+                    }`
+                  : `flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition ${
+                      isActive
+                        ? 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50'
+                    }`
+              }
+            >
+              {isCollapsed ? (
+                <Terminal className="w-5 h-5 text-cyan-500 dark:text-cyan-400" />
+              ) : (
+                <>
+                  <div className="flex items-center space-x-3">
+                    <Terminal className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />
+                    <span>Price Fetch Logs</span>
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-semibold">
+                    Dev
                   </span>
                 </>
               )}

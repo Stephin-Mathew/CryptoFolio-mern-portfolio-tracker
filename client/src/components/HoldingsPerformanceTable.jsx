@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useCurrency } from '../context/CurrencyContext';
 import { getAssetColor } from '../utils/assetColors';
+import { AssetLogo } from './AssetLogo';
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 
 // NOTE: Unrealised P&L is omitted because holdings like crypto airdrops do not have an actual buy price/cost basis.
@@ -143,6 +144,7 @@ export function HoldingsPerformanceTable({ metrics, prices = {} }) {
           </thead>
           <tbody>
             {rows.map((s) => {
+              const priceEntry = prices[s.symbol];
               const color = getAssetColor(s.symbol);
               const typeStyle = TYPE_COLOR[s.assetType] ?? { bg: 'rgba(100,100,100,0.1)', text: 'var(--text-muted)' };
 
@@ -154,14 +156,12 @@ export function HoldingsPerformanceTable({ metrics, prices = {} }) {
                   {/* Asset */}
                   <td style={tdStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{
-                        width: 28, height: 28, borderRadius: 6,
-                        background: color, color: '#fff',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 11, fontWeight: 700, flexShrink: 0,
-                      }}>
-                        {s.symbol.charAt(0)}
-                      </div>
+                      <AssetLogo
+                        symbol={s.symbol}
+                        assetType={s.assetType || priceEntry?.assetType || 'crypto'}
+                        customUrl={priceEntry?.logoUrl}
+                        size={28}
+                      />
                       <div>
                         <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 12 }}>{s.symbol}</div>
                         <div style={{ fontSize: 10, color: 'var(--text-muted)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>

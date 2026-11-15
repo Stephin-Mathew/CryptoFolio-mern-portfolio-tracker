@@ -10,7 +10,6 @@ import {
   ArrowRight,
   Loader2,
   RefreshCw,
-  ExternalLink,
   Sparkles,
   Check,
   Zap,
@@ -55,7 +54,9 @@ export const ApiMappingModal = ({
 
     try {
       const type = typeToUse || assetType;
-      const res = await api.get(`/prices/quote/${encodeURIComponent(sym)}?assetType=${type}&referencePrice=${referencePrice || ''}`);
+      const res = await api.get(
+        `/prices/quote/${encodeURIComponent(sym)}?assetType=${type}&referencePrice=${referencePrice || ''}`
+      );
       if (res.data?.found) {
         setQuote(res.data);
         if (res.data.suggestedSymbol && res.data.suggestedSymbol !== sym) {
@@ -67,7 +68,7 @@ export const ApiMappingModal = ({
     } catch (err) {
       setError(
         err.response?.data?.message ||
-        `Could not fetch live quote for "${sym}". For Indian stocks, try appending .NS (e.g. ${sym}.NS).`
+          `Could not fetch live quote for "${sym}". For Indian stocks, try appending .NS (e.g. ${sym}.NS).`
       );
     } finally {
       setLoading(false);
@@ -99,102 +100,54 @@ export const ApiMappingModal = ({
       if (bestMatch) {
         setSelectedMfVariant(bestMatch);
         setTargetSymbol(String(bestMatch.schemeCode));
-        setQuote({
-          found: true,
-          symbol: String(bestMatch.schemeCode),
-          suggestedSymbol: String(bestMatch.schemeCode),
-          assetType: 'mutual_fund',
-          source: 'MFapi.in',
-          currency: 'INR',
-          price: bestMatch.price,
-          priceInr: bestMatch.navInr,
-          navInr: bestMatch.navInr,
-          schemeName: bestMatch.schemeName,
-          change24h: bestMatch.change24h || 0,
-          change7d: bestMatch.change7d || 0,
-          change30d: bestMatch.change30d || 0,
-          formattedPrice: bestMatch.formattedPrice,
-          diffPct: bestMatch.diffPct,
-          diffAbs: bestMatch.diffAbs,
-          isClosestMatch: true,
-        });
-      } else {
-        setError(`No mutual fund schemes found matching "${q}"`);
+        await fetchQuote(String(bestMatch.schemeCode), 'mutual_fund');
+      } else if (variants.length > 0) {
+        setSelectedMfVariant(variants[0]);
+        setTargetSymbol(String(variants[0].schemeCode));
+        await fetchQuote(String(variants[0].schemeCode), 'mutual_fund');
       }
     } catch (err) {
-      console.warn('Failed to fetch MF variants:', err);
-      setError(err.response?.data?.message || `Could not fetch variants for "${q}"`);
+      setError(err.response?.data?.message || 'Failed to search mutual fund variants');
     } finally {
       setMfSearching(false);
     }
   };
 
+  const handleSelectVariant = async (variant) => {
+    setSelectedMfVariant(variant);
+    setTargetSymbol(String(variant.schemeCode));
+    await fetchQuote(String(variant.schemeCode), 'mutual_fund');
+  };
+
   useEffect(() => {
     if (isOpen) {
-      const initialType = sourceAssetType || 'stock';
-      setAssetType(initialType);
-      setError('');
       setQuote(null);
+      setError('');
       setMfVariants([]);
       setSelectedMfVariant(null);
 
-      const defaultSearch = (sourceName || safeSourceSymbol).trim();
-      setMfSearchQuery(defaultSearch);
+      const initialType = sourceAssetType || 'stock';
+      setAssetType(initialType);
 
       if (initialType === 'mutual_fund') {
-        if (defaultSearch) {
-          fetchMfVariants(defaultSearch);
+        const queryToRun = (sourceName || safeSourceSymbol).trim();
+        setMfSearchQuery(queryToRun);
+        setTargetSymbol('');
+        if (queryToRun) {
+          fetchMfVariants(queryToRun);
         }
       } else {
-        // Auto-suggest stock / crypto target symbol
-        let defaultTarget = safeSourceSymbol.trim().toUpperCase();
-        if (initialType === 'stock' && defaultTarget && !defaultTarget.includes('.')) {
-          defaultTarget = `${defaultTarget}.NS`;
+        let guess = safeSourceSymbol.toUpperCase();
+        if (initialType === 'stock' && !guess.includes('.')) {
+          guess = `${guess}.NS`;
         }
-        setTargetSymbol(defaultTarget);
-        if (defaultTarget) {
-          fetchQuote(defaultTarget, initialType);
+        setTargetSymbol(guess);
+        if (guess) {
+          fetchQuote(guess, initialType);
         }
       }
     }
-  }, [isOpen, safeSourceSymbol, sourceName, sourceAssetType]);
-
-  // Debounced search for mutual funds when user changes query manually
-  useEffect(() => {
-    if (assetType !== 'mutual_fund' || !mfSearchQuery || mfSearchQuery.trim().length < 2) {
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      fetchMfVariants(mfSearchQuery);
-    }, 450);
-
-    return () => clearTimeout(timer);
-  }, [mfSearchQuery, assetType]);
-
-  const handleSelectVariant = (variant) => {
-    setSelectedMfVariant(variant);
-    setTargetSymbol(String(variant.schemeCode));
-    setQuote({
-      found: true,
-      symbol: String(variant.schemeCode),
-      suggestedSymbol: String(variant.schemeCode),
-      assetType: 'mutual_fund',
-      source: 'MFapi.in',
-      currency: 'INR',
-      price: variant.price,
-      priceInr: variant.navInr,
-      navInr: variant.navInr,
-      schemeName: variant.schemeName,
-      change24h: variant.change24h || 0,
-      change7d: variant.change7d || 0,
-      change30d: variant.change30d || 0,
-      formattedPrice: variant.formattedPrice,
-      diffPct: variant.diffPct,
-      diffAbs: variant.diffAbs,
-      isClosestMatch: variant.isClosestMatch,
-    });
-  };
+  }, [isOpen, sourceSymbol, sourceName, sourceAssetType]);
 
   const handleAppendSuffix = (suffix) => {
     let base = targetSymbol.replace(/\.(NS|BO)$/i, '');
@@ -218,7 +171,6 @@ export const ApiMappingModal = ({
     onClose();
   };
 
-  // Compare live price against reference price (screenshot LTP)
   const renderPriceDiff = () => {
     if (!referencePrice || !quote) return null;
     const ref = Number(referencePrice);
@@ -229,16 +181,18 @@ export const ApiMappingModal = ({
     const isClose = diffPct < 3;
 
     return (
-      <div className={`mt-2 p-2 rounded-lg text-xs flex items-center justify-between border ${
-        isClose
-          ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-          : 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'
-      }`}>
+      <div
+        className={`mt-2 p-2.5 rounded-xl text-xs flex items-center justify-between border ${
+          isClose
+            ? 'bg-[var(--positive-bg)] border-[var(--positive)]/20 text-[var(--positive)]'
+            : 'bg-[var(--warning-bg)] border-[var(--warning)]/20 text-[var(--warning)]'
+        }`}
+      >
         <span>
-          Original / Screenshot Price: <strong>{quote.currency === 'INR' ? `₹${ref.toFixed(2)}` : `$${ref.toFixed(2)}`}</strong>
+          Original LTP: <strong>{quote.currency === 'INR' ? `₹${ref.toFixed(2)}` : `$${ref.toFixed(2)}`}</strong>
         </span>
-        <span className="font-bold">
-          {isClose ? `✅ Match (${diffPct}% diff)` : `⚠️ ${diffPct}% variance`}
+        <span className="font-semibold">
+          {isClose ? `Match (${diffPct}% diff)` : `${diffPct}% variance`}
         </span>
       </div>
     );
@@ -247,371 +201,301 @@ export const ApiMappingModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
-      <div className="glass-panel w-full max-w-lg rounded-2xl border dark:border-slate-800 border-slate-200 shadow-2xl p-6 relative flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 dark:hover:text-white hover:text-slate-900 rounded-xl dark:bg-slate-900/60 bg-slate-100 dark:hover:bg-slate-800 hover:bg-slate-200 border dark:border-slate-800 border-slate-300 transition cursor-pointer"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
+    <div className="modal-backdrop animate-fadeIn" onClick={onClose}>
+      <div
+        className="w-full max-w-lg rounded-2xl border border-[var(--card-border)] bg-[var(--panel-bg)] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden text-[var(--text-primary)]"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Modal Header */}
-        <div>
-          <div className="flex items-center space-x-2 text-cyan-600 dark:text-cyan-400 text-xs font-semibold uppercase tracking-wider mb-1">
-            <Sparkles className="w-4 h-4" />
-            <span>Live API Price Verification</span>
+        <div className="px-5 py-4 border-b border-[var(--divider-1)] flex items-center justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] flex items-center justify-center shrink-0">
+              <Sparkles size={16} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-base font-bold text-[var(--text-primary)] tracking-tight truncate">
+                Verify Quote · <span className="font-mono text-[var(--text-primary)]">{sourceName || sourceSymbol || 'Asset'}</span>
+              </h3>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
+                Test live feeds from MFapi.in, Yahoo Finance, or CoinMarketCap
+              </p>
+            </div>
           </div>
-          <h2 className="text-xl font-bold dark:text-white text-slate-900 font-heading">
-            Map & Verify Price for <span className="font-mono text-cyan-500">{sourceName || sourceSymbol || 'Asset'}</span>
-          </h2>
-          <p className="text-xs dark:text-slate-400 text-slate-500 mt-0.5">
-            Query MFapi.in, Yahoo Finance, or CoinMarketCap to automatically select the matching plan variant and test live quotes.
-          </p>
+
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--shell-bg)] transition cursor-pointer"
+          >
+            <X size={18} />
+          </button>
         </div>
 
         {/* Asset Type Selector Tabs */}
-        <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl dark:bg-slate-900/80 bg-slate-100 border dark:border-slate-800 border-slate-300">
-          {[
-            { id: 'stock', label: 'Stock / ETF', icon: TrendingUp },
-            { id: 'mutual_fund', label: 'Mutual Fund', icon: Layers },
-            { id: 'crypto', label: 'Crypto', icon: Coins },
-          ].map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => {
-                setAssetType(id);
-                setQuote(null);
-                setError('');
-                if (id === 'mutual_fund') {
-                  const defaultSearch = (sourceName || safeSourceSymbol).trim();
-                  setMfSearchQuery(defaultSearch);
-                  if (defaultSearch) fetchMfVariants(defaultSearch);
-                } else if (id === 'stock' && targetSymbol && !targetSymbol.includes('.')) {
-                  setTargetSymbol(`${targetSymbol}.NS`);
-                }
-              }}
-              className={`flex items-center justify-center space-x-1.5 py-2 px-2 rounded-lg text-xs font-bold transition cursor-pointer ${
-                assetType === id
-                  ? 'dark:bg-slate-800 bg-white text-cyan-600 dark:text-cyan-400 shadow-sm border dark:border-slate-700 border-slate-200'
-                  : 'dark:text-slate-400 text-slate-600 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span>{label}</span>
-            </button>
-          ))}
+        <div className="px-5 py-3 bg-[var(--shell-bg)] border-b border-[var(--divider-1)]">
+          <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-[var(--card-bg)] border border-[var(--card-border)] text-xs">
+            {[
+              { id: 'stock', label: 'Stock / ETF', icon: TrendingUp },
+              { id: 'mutual_fund', label: 'Mutual Fund', icon: Layers },
+              { id: 'crypto', label: 'Crypto', icon: Coins },
+            ].map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  setAssetType(id);
+                  setQuote(null);
+                  setError('');
+                  if (id === 'mutual_fund') {
+                    const defaultSearch = (sourceName || safeSourceSymbol).trim();
+                    setMfSearchQuery(defaultSearch);
+                    if (defaultSearch) fetchMfVariants(defaultSearch);
+                  } else if (id === 'stock' && targetSymbol && !targetSymbol.includes('.')) {
+                    setTargetSymbol(`${targetSymbol}.NS`);
+                  }
+                }}
+                className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg font-medium transition cursor-pointer ${
+                  assetType === id
+                    ? 'bg-[var(--shell-bg)] text-[var(--text-primary)] font-bold border border-[var(--card-border)]'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                <Icon size={13} />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Stock / ETF Input Section */}
-        {assetType === 'stock' && (
-          <div className="space-y-2">
-            <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase tracking-wider">
-              Stock Ticker (Yahoo Finance)
-            </label>
-            <div className="flex items-center space-x-2">
-              <input
-                type="text"
-                value={targetSymbol}
-                onChange={(e) => setTargetSymbol(e.target.value.toUpperCase())}
-                placeholder="e.g. CANBK.NS, RELIANCE.NS, AAPL"
-                onKeyDown={(e) => e.key === 'Enter' && fetchQuote(targetSymbol, 'stock')}
-                className="flex-1 px-3.5 py-2.5 rounded-xl dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 dark:text-white text-slate-900 text-sm font-mono font-bold uppercase outline-none focus:border-cyan-500 shadow-xs"
-              />
-              <button
-                type="button"
-                onClick={() => fetchQuote(targetSymbol, 'stock')}
-                disabled={loading || !targetSymbol.trim()}
-                className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition cursor-pointer disabled:opacity-50 shrink-0"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                <span>Fetch Price</span>
-              </button>
-            </div>
-
-            {/* Quick Suffix Helpers for Indian NSE/BSE */}
-            <div className="flex items-center space-x-1.5 pt-1">
-              <span className="text-[11px] text-slate-400">Indian Exchanges:</span>
-              <button
-                type="button"
-                onClick={() => handleAppendSuffix('.NS')}
-                className="px-2 py-0.5 rounded text-[11px] font-mono font-semibold dark:bg-slate-800 bg-slate-200 hover:text-cyan-500 transition cursor-pointer"
-              >
-                + .NS (NSE)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAppendSuffix('.BO')}
-                className="px-2 py-0.5 rounded text-[11px] font-mono font-semibold dark:bg-slate-800 bg-slate-200 hover:text-cyan-500 transition cursor-pointer"
-              >
-                + .BO (BSE)
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Mutual Fund Input & Variants Section */}
-        {assetType === 'mutual_fund' && (
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase tracking-wider mb-1.5">
-                Mutual Fund Name or Scheme Code
+        {/* Modal Body */}
+        <div className="p-5 overflow-y-auto space-y-4 flex-1">
+          {/* Stock / ETF Input Section */}
+          {assetType === 'stock' && (
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                Stock Ticker (Yahoo Finance)
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                  {mfSearching ? (
-                    <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
-                  ) : (
-                    <Search className="w-4 h-4 text-slate-400" />
-                  )}
-                </div>
+              <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  value={mfSearchQuery}
-                  onChange={(e) => setMfSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && fetchMfVariants(mfSearchQuery)}
-                  placeholder="e.g. Parag Parikh Flexi Cap, Quant Small Cap..."
-                  className="w-full pl-9 pr-24 py-2.5 rounded-xl dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 dark:text-white text-slate-900 text-xs outline-none focus:border-cyan-500 shadow-xs"
+                  value={targetSymbol}
+                  onChange={(e) => setTargetSymbol(e.target.value.toUpperCase())}
+                  placeholder="e.g. CANBK.NS, RELIANCE.NS, AAPL"
+                  onKeyDown={(e) => e.key === 'Enter' && fetchQuote(targetSymbol, 'stock')}
+                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] text-sm font-mono font-bold uppercase focus:outline-none focus:border-[var(--text-primary)] transition placeholder:text-[var(--text-muted)]"
                 />
                 <button
                   type="button"
-                  onClick={() => fetchMfVariants(mfSearchQuery)}
-                  disabled={mfSearching || !mfSearchQuery.trim()}
-                  className="absolute right-1.5 top-1.5 px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition cursor-pointer disabled:opacity-50 flex items-center space-x-1"
+                  onClick={() => fetchQuote(targetSymbol, 'stock')}
+                  disabled={loading || !targetSymbol.trim()}
+                  className="btn-primary min-h-[38px] px-4 text-xs font-semibold rounded-xl disabled:opacity-50 shrink-0"
                 >
-                  {mfSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                  <span>Search</span>
+                  {loading ? <Loader2 size={13} className="animate-spin text-[var(--btn-primary-text)]" /> : <RefreshCw size={13} className="text-[var(--btn-primary-text)]" />}
+                  <span>Fetch Price</span>
+                </button>
+              </div>
+
+              {/* Quick Suffix Helpers for Indian NSE/BSE */}
+              <div className="flex items-center gap-1.5 pt-1 text-[11px]">
+                <span className="text-[var(--text-muted)]">Indian Exchanges:</span>
+                <button
+                  type="button"
+                  onClick={() => handleAppendSuffix('.NS')}
+                  className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-[var(--shell-bg)] border border-[var(--card-border)] hover:bg-[var(--card-bg)] text-[var(--text-primary)] transition cursor-pointer"
+                >
+                  + .NS (NSE)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAppendSuffix('.BO')}
+                  className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-[var(--shell-bg)] border border-[var(--card-border)] hover:bg-[var(--card-bg)] text-[var(--text-primary)] transition cursor-pointer"
+                >
+                  + .BO (BSE)
                 </button>
               </div>
             </div>
+          )}
 
-            {/* Auto-Match Highlight Banner */}
-            {selectedMfVariant && (
-              <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-500/10 via-cyan-500/10 to-transparent border border-emerald-500/30 dark:border-emerald-500/20">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-1.5">
-                    <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                      Auto-Selected Closest Variant
-                    </span>
+          {/* Mutual Fund Input & Variants Section */}
+          {assetType === 'mutual_fund' && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
+                  Mutual Fund Name or Scheme Code
+                </label>
+                <div className="relative flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search
+                      size={14}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+                    />
+                    <input
+                      type="text"
+                      value={mfSearchQuery}
+                      onChange={(e) => setMfSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && fetchMfVariants(mfSearchQuery)}
+                      placeholder="e.g. Parag Parikh Flexi Cap, Quant Small Cap..."
+                      className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--text-primary)] transition placeholder:text-[var(--text-muted)]"
+                    />
                   </div>
-                  {referencePrice && (
-                    <span className="text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400">
-                      Screenshot: <strong className="text-slate-800 dark:text-slate-200">₹{Number(referencePrice).toFixed(2)}</strong>
-                    </span>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => fetchMfVariants(mfSearchQuery)}
+                    disabled={mfSearching || !mfSearchQuery.trim()}
+                    className="btn-primary min-h-[36px] px-3.5 text-xs font-semibold rounded-xl disabled:opacity-50 shrink-0"
+                  >
+                    {mfSearching ? <Loader2 size={13} className="animate-spin text-[var(--btn-primary-text)]" /> : <Search size={13} className="text-[var(--btn-primary-text)]" />}
+                    <span>Search</span>
+                  </button>
                 </div>
+              </div>
 
-                <div className="mt-1 flex items-baseline justify-between gap-2">
-                  <p className="text-xs font-semibold dark:text-white text-slate-900 line-clamp-1">
-                    {selectedMfVariant.schemeName}
-                  </p>
-                  <span className="text-xs font-mono font-extrabold text-emerald-600 dark:text-emerald-400 shrink-0">
-                    NAV ₹{selectedMfVariant.navInr.toFixed(2)}
+              {/* Variants Results */}
+              {mfVariants.length > 0 && (
+                <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] flex items-center justify-between">
+                    <span>Select Exact Plan Variant ({mfVariants.length})</span>
+                    {selectedMfVariant && (
+                      <span className="text-[var(--text-primary)] font-mono font-medium">Code #{selectedMfVariant.schemeCode}</span>
+                    )}
+                  </div>
+
+                  {mfVariants.map((v) => {
+                    const isSelected = selectedMfVariant?.schemeCode === v.schemeCode;
+                    return (
+                      <div
+                        key={v.schemeCode}
+                        onClick={() => handleSelectVariant(v)}
+                        className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition select-none ${
+                          isSelected
+                            ? 'bg-[var(--shell-bg)] border-[var(--text-primary)] shadow-2xs font-semibold'
+                            : 'bg-[var(--card-bg)] border-[var(--card-border)] hover:bg-[var(--shell-bg)]'
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-[var(--text-primary)] truncate">
+                            {v.schemeName}
+                          </div>
+                          <div className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5">
+                            Code: {v.schemeCode}
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <div className="font-mono font-bold text-xs text-[var(--text-primary)]">
+                            ₹{Number(v.nav || 0).toFixed(2)}
+                          </div>
+                          {isSelected && (
+                            <span className="text-[10px] font-semibold text-[var(--positive)]">
+                              Selected
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Crypto Input Section */}
+          {assetType === 'crypto' && (
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                Cryptocurrency Ticker
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={targetSymbol}
+                  onChange={(e) => setTargetSymbol(e.target.value.toUpperCase())}
+                  placeholder="e.g. BTC, ETH, SOL, SUI"
+                  onKeyDown={(e) => e.key === 'Enter' && fetchQuote(targetSymbol, 'crypto')}
+                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] text-sm font-mono font-bold uppercase focus:outline-none focus:border-[var(--text-primary)] transition placeholder:text-[var(--text-muted)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => fetchQuote(targetSymbol, 'crypto')}
+                  disabled={loading || !targetSymbol.trim()}
+                  className="btn-primary min-h-[38px] px-4 text-xs font-semibold rounded-xl disabled:opacity-50 shrink-0"
+                >
+                  {loading ? <Loader2 size={13} className="animate-spin text-[var(--btn-primary-text)]" /> : <RefreshCw size={13} className="text-[var(--btn-primary-text)]" />}
+                  <span>Fetch Price</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Error Alert */}
+          {error && (
+            <div className="p-3 rounded-xl bg-[var(--negative-bg)] border border-[var(--negative)]/20 text-[var(--negative)] text-xs flex items-center gap-2 font-medium">
+              <AlertCircle size={15} className="shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Verified Quote Preview Card */}
+          {quote && (
+            <div className="p-4 rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] shadow-2xs space-y-2 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 size={14} className="text-[var(--positive)]" />
+                  <span className="text-[11px] font-bold text-[var(--positive)] uppercase tracking-wider">
+                    Live Quote Verified
+                  </span>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold bg-[var(--card-bg)] text-[var(--text-muted)] border border-[var(--card-border)]">
+                  Source: {quote.source}
+                </span>
+              </div>
+
+              {quote.schemeName && (
+                <p className="text-xs font-semibold text-[var(--text-primary)] leading-snug">
+                  {quote.schemeName}
+                </p>
+              )}
+
+              <div className="flex items-baseline justify-between pt-1">
+                <div>
+                  <span className="text-2xl font-extrabold font-mono text-[var(--text-primary)]">
+                    {quote.formattedPrice}
+                  </span>
+                  <span className="text-xs text-[var(--text-muted)] font-mono ml-2">
+                    ({quote.currency})
                   </span>
                 </div>
 
-                {selectedMfVariant.diffPct !== null && (
-                  <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                    <span className="inline-flex items-center gap-1 font-mono">
-                      <span>Scheme Code:</span>
-                      <strong className="text-cyan-500">{selectedMfVariant.schemeCode}</strong>
-                      <span className="px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-500 text-[10px] uppercase font-bold">
-                        {selectedMfVariant.planType} • {selectedMfVariant.optionType}
-                      </span>
-                    </span>
-                    <span className={`font-bold ${
-                      Number(selectedMfVariant.diffPct) < 3 ? 'text-emerald-500' : 'text-amber-500'
-                    }`}>
-                      {Number(selectedMfVariant.diffPct) < 3 ? '✅' : '⚠️'} {selectedMfVariant.diffPct}% diff from screenshot
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Variants Selector List */}
-            {mfVariants.length > 0 && (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center space-x-1.5">
-                    <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>All Plan Variants ({mfVariants.length} Found)</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowAllVariants(!showAllVariants)}
-                    className="text-[11px] text-cyan-500 hover:text-cyan-400 font-semibold cursor-pointer"
+                {quote.change24h !== undefined && (
+                  <span
+                    className={`text-xs font-bold font-mono ${
+                      quote.change24h >= 0 ? 'text-[var(--positive)]' : 'text-[var(--negative)]'
+                    }`}
                   >
-                    {showAllVariants ? 'Collapse' : 'Show All'}
-                  </button>
-                </div>
-
-                {showAllVariants && (
-                  <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1 rounded-xl border dark:border-slate-800 border-slate-200 p-1.5 dark:bg-slate-900/60 bg-slate-50/60">
-                    {mfVariants.map((v) => {
-                      const isSelected = selectedMfVariant?.schemeCode === v.schemeCode;
-                      const isClosest = v.isClosestMatch;
-                      return (
-                        <button
-                          key={v.schemeCode}
-                          type="button"
-                          onClick={() => handleSelectVariant(v)}
-                          className={`w-full text-left p-2.5 rounded-lg border transition cursor-pointer flex flex-col gap-1 ${
-                            isSelected
-                              ? 'border-emerald-500/60 dark:bg-emerald-500/10 bg-emerald-50 shadow-xs'
-                              : 'border-slate-200 dark:border-slate-800 dark:bg-slate-900 bg-white hover:border-slate-300 dark:hover:border-slate-700'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center space-x-1.5 overflow-hidden">
-                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase shrink-0 ${
-                                v.planType === 'Direct'
-                                  ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30'
-                                  : 'bg-slate-500/15 text-slate-600 dark:text-slate-400 border border-slate-500/30'
-                              }`}>
-                                {v.planType}
-                              </span>
-                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase shrink-0 ${
-                                v.optionType === 'Growth'
-                                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                                  : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
-                              }`}>
-                                {v.optionType}
-                              </span>
-                              {isClosest && (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 shrink-0">
-                                  🎯 Closest Match
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="flex items-center space-x-2 shrink-0">
-                              <span className="font-mono font-bold text-xs dark:text-white text-slate-900">
-                                ₹{v.navInr.toFixed(2)}
-                              </span>
-                              {isSelected && (
-                                <span className="p-0.5 rounded-full bg-emerald-500 text-slate-950">
-                                  <Check className="w-3 h-3" />
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                            <span className="truncate pr-2">{v.schemeName}</span>
-                            {v.diffPct !== null && (
-                              <span className={`font-mono font-bold shrink-0 text-[10px] ${
-                                Number(v.diffPct) < 3 ? 'text-emerald-500' : 'text-slate-400'
-                              }`}>
-                                {v.diffPct}% diff
-                              </span>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                    {quote.change24h >= 0 ? '+' : ''}
+                    {Number(quote.change24h).toFixed(2)}% (24H)
+                  </span>
                 )}
               </div>
-            )}
-          </div>
-        )}
 
-        {/* Crypto Input Section */}
-        {assetType === 'crypto' && (
-          <div className="space-y-2">
-            <label className="block text-xs font-semibold dark:text-slate-300 text-slate-700 uppercase tracking-wider">
-              Crypto Market Ticker (CoinMarketCap / CoinGecko)
-            </label>
-            <div className="flex items-center space-x-2">
-              <input
-                type="text"
-                value={targetSymbol}
-                onChange={(e) => setTargetSymbol(e.target.value.toUpperCase())}
-                placeholder="e.g. BTC, ETH, SOL, HYPE"
-                onKeyDown={(e) => e.key === 'Enter' && fetchQuote(targetSymbol, 'crypto')}
-                className="flex-1 px-3.5 py-2.5 rounded-xl dark:bg-slate-900 bg-white border dark:border-slate-700 border-slate-300 dark:text-white text-slate-900 text-sm font-mono font-bold uppercase outline-none focus:border-cyan-500 shadow-xs"
-              />
-              <button
-                type="button"
-                onClick={() => fetchQuote(targetSymbol, 'crypto')}
-                disabled={loading || !targetSymbol.trim()}
-                className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition cursor-pointer disabled:opacity-50 shrink-0"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                <span>Fetch Price</span>
-              </button>
-            </div>
-          </div>
-        )}
+              {renderPriceDiff()}
 
-        {/* Error Alert */}
-        {error && (
-          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs flex items-center space-x-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* Verified Quote Preview Card */}
-        {quote && (
-          <div className="p-4 rounded-xl dark:bg-slate-900/90 bg-slate-50 border dark:border-cyan-500/30 border-cyan-500/40 shadow-lg space-y-2 animate-fadeIn">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                <span className="text-xs font-bold text-emerald-500 uppercase tracking-wider">
-                  Live Quote Verified
+              <div className="pt-2 flex items-center justify-between text-[11px] text-[var(--text-muted)] font-mono border-t border-[var(--divider-1)]">
+                <span>
+                  Mapping: <strong className="text-[var(--text-primary)]">{sourceSymbol || 'Asset'}</strong> &rarr;{' '}
+                  <strong className="text-[var(--text-primary)]">{quote.symbol}</strong>
                 </span>
+                <span>Type: {quote.assetType}</span>
               </div>
-              <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold dark:bg-slate-800 bg-slate-200 text-slate-600 dark:text-slate-300 border dark:border-slate-700 border-slate-300">
-                Source: {quote.source}
-              </span>
             </div>
-
-            {quote.schemeName && (
-              <p className="text-xs font-semibold dark:text-white text-slate-900 leading-snug">
-                {quote.schemeName}
-              </p>
-            )}
-
-            <div className="flex items-baseline justify-between pt-1">
-              <div>
-                <span className="text-2xl font-extrabold font-mono dark:text-white text-slate-900">
-                  {quote.formattedPrice}
-                </span>
-                <span className="text-xs text-slate-400 font-mono ml-2">
-                  ({quote.currency})
-                </span>
-              </div>
-
-              {quote.change24h !== undefined && (
-                <span className={`text-xs font-bold font-mono ${
-                  quote.change24h >= 0 ? 'text-emerald-500' : 'text-rose-500'
-                }`}>
-                  {quote.change24h >= 0 ? '+' : ''}{quote.change24h.toFixed(2)}% (24H)
-                </span>
-              )}
-            </div>
-
-            {/* Comparison against screenshot / original reference price */}
-            {renderPriceDiff()}
-
-            <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400 font-mono border-t dark:border-slate-800 border-slate-200">
-              <span>Mapping: <strong className="text-cyan-500">{sourceSymbol || 'Asset'}</strong> &rarr; <strong className="text-indigo-400">{quote.symbol}</strong></span>
-              <span>Type: {quote.assetType}</span>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Modal Action Buttons */}
-        <div className="pt-3 border-t dark:border-slate-800 border-slate-200 flex items-center justify-end space-x-3">
+        <div className="px-5 py-3.5 border-t border-[var(--divider-1)] bg-[var(--shell-bg)] flex items-center justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl border dark:border-slate-700 border-slate-300 dark:hover:bg-slate-800 hover:bg-slate-200 text-xs font-semibold transition cursor-pointer"
+            className="px-4 py-2 rounded-xl text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--card-bg)] border border-[var(--card-border)] transition cursor-pointer"
           >
             Cancel
           </button>
@@ -620,9 +504,9 @@ export const ApiMappingModal = ({
             type="button"
             onClick={handleConfirm}
             disabled={!quote}
-            className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-cyan-500/20 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            className="btn-primary min-h-[36px] px-4 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <Check className="w-4 h-4" />
+            <Check size={13} className="text-[var(--btn-primary-text)]" />
             <span>Confirm & Map to {quote ? quote.symbol : 'Symbol'}</span>
           </button>
         </div>
