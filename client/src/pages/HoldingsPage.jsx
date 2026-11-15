@@ -14,6 +14,8 @@ export function HoldingsPage({
   onEditClick,
   onUpdatePrice,
   onResetPrice,
+  onUpdateLogo,
+  onResetLogo,
   rowStatuses,
 }) {
   const { currency } = useCurrency();
@@ -33,16 +35,16 @@ export function HoldingsPage({
 
   return (
     <div className="page-container holdings-page">
-      {/* Header row with asset type tabs */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-        <AssetTypeTabs activeTab={activeTab} setActiveTab={setActiveTab} counts={tabCounts} />
-        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-          Tip: Click any cell to edit inline
+      <div style={{ maxWidth: 1100, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Header row with asset type tabs */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <AssetTypeTabs activeTab={activeTab} setActiveTab={setActiveTab} counts={tabCounts} />
+          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+            Tip: Click any cell to edit inline
+          </div>
         </div>
-      </div>
 
-      {/* Holdings table in a card */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        {/* Holdings table */}
         <HoldingsTable
           holdings={filteredHoldings}
           prices={prices}
@@ -51,6 +53,8 @@ export function HoldingsPage({
           onEditClick={onEditClick}
           onUpdatePrice={onUpdatePrice}
           onResetPrice={onResetPrice}
+          onUpdateLogo={onUpdateLogo}
+          onResetLogo={onResetLogo}
           rowStatuses={rowStatuses}
           hideBuyPrice={activeTab === 'crypto'}
           displayCurrency={currency}

@@ -298,7 +298,7 @@ export function TabBar({
                 position: 'absolute',
                 right: 0,
                 top: 'calc(100% + 8px)',
-                zIndex: 60,
+                zIndex: 100,
                 background: 'var(--panel-bg)',
                 border: '1px solid var(--card-border)',
                 borderRadius: 12,

@@ -13,6 +13,7 @@ import { AnalyticsPage } from './pages/AnalyticsPage';
 import { WalletsPage } from './pages/WalletsPage';
 import { WalletDetailPage } from './pages/WalletDetailPage';
 import { CashWalletPage } from './pages/CashWalletPage';
+import { DevPriceLogsPage } from './pages/DevPriceLogsPage';
 import { HoldingFormModal } from './components/HoldingFormModal';
 import { WalletFormModal } from './components/WalletFormModal';
 import { ScreenshotUploadModal } from './components/ScreenshotUploadModal';
@@ -207,6 +208,36 @@ function AppContent() {
     }
   };
 
+  const handleUpdateLogo = async (symbol, logoData) => {
+    try {
+      const res = await api.post('/prices/logo/override', { symbol, ...logoData });
+      if (res.data.price) {
+        setPrices((prev) => ({ ...prev, [symbol.toUpperCase()]: res.data.price }));
+      }
+      showToast(res.data.message || `Logo updated for ${symbol}`, 'success');
+      fetchPortfolioData().catch(() => {});
+    } catch (err) {
+      console.error('Failed to update logo override:', err);
+      showToast(err.response?.data?.message || 'Failed to update logo', 'error');
+      throw err;
+    }
+  };
+
+  const handleResetLogo = async (symbol) => {
+    try {
+      const res = await api.delete(`/prices/logo/override/${encodeURIComponent(symbol)}`);
+      if (res.data.price) {
+        setPrices((prev) => ({ ...prev, [symbol.toUpperCase()]: res.data.price }));
+      }
+      showToast(res.data.message || `Reset logo for ${symbol} to default`, 'success');
+      fetchPortfolioData().catch(() => {});
+    } catch (err) {
+      console.error('Failed to reset logo override:', err);
+      showToast(err.response?.data?.message || 'Failed to reset logo', 'error');
+      throw err;
+    }
+  };
+
   const handleSaveHolding = async (formData) => {
     if (holdingToEdit) {
       const res = await api.patch(`/holdings/${holdingToEdit._id}`, formData);
@@ -350,7 +381,7 @@ function AppContent() {
   return (
     <CurrencyProvider prices={prices}>
       {/* Page background handled by body in CSS */}
-      <div style={{ minHeight: '100vh' }}>
+      <div className="app-container">
         {/* Toast */}
         {toast && (
           <div
@@ -440,6 +471,8 @@ function AppContent() {
                       }}
                       onUpdatePrice={handleUpdatePrice}
                       onResetPrice={handleResetPrice}
+                      onUpdateLogo={handleUpdateLogo}
+                      onResetLogo={handleResetLogo}
                       onOpenAuthModal={() => setIsAuthModalOpen(true)}
                       onOpenAddWalletModal={openAddWalletModal}
                       onRefreshPrices={handleRefreshPrices}
@@ -466,6 +499,8 @@ function AppContent() {
                       }}
                       onUpdatePrice={handleUpdatePrice}
                       onResetPrice={handleResetPrice}
+                      onUpdateLogo={handleUpdateLogo}
+                      onResetLogo={handleResetLogo}
                       rowStatuses={rowStatuses}
                     />
                   }
@@ -520,10 +555,17 @@ function AppContent() {
                         onClearWalletHoldings={promptClearWalletHoldings}
                         onUpdatePrice={handleUpdatePrice}
                         onResetPrice={handleResetPrice}
+                        onUpdateLogo={handleUpdateLogo}
+                        onResetLogo={handleResetLogo}
                         rowStatuses={rowStatuses}
                       />
                     );
                   })()}
+                />
+
+                <Route
+                  path="/dev/price-logs"
+                  element={<DevPriceLogsPage />}
                 />
               </Routes>
             </div>
@@ -532,7 +574,13 @@ function AppContent() {
 
         {/* Mobile bottom tab bar */}
         {isAuthenticated && (
-          <BottomTabBar onOpenUploadModal={openUploadModal} />
+          <BottomTabBar
+            onOpenUploadModal={openUploadModal}
+            onOpenJsonExtractModal={openJsonExtractModal}
+            onOpenAddModal={openAddHoldingModal}
+            onOpenAddWalletModal={openAddWalletModal}
+            onRefreshPrices={handleRefreshPrices}
+          />
         )}
 
         {/* Modals */}

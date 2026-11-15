@@ -42,6 +42,15 @@ const priceOverrideSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
+    customLogoUrl: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    customLogoCmcId: {
+      type: Number,
+      default: null,
+    },
   },
   {
     timestamps: true,

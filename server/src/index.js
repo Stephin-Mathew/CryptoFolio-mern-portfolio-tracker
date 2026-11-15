@@ -10,6 +10,7 @@ import walletsRoutes from './routes/wallets.js';
 import pricesRoutes from './routes/prices.js';
 import portfolioRoutes from './routes/portfolio.js';
 import extractRoutes from './routes/extract.js';
+import devLogsRoutes from './routes/devLogs.js';
 import { initPriceCron } from './services/priceService.js';
 import { initSnapshotCron } from './services/historyService.js';
 
@@ -32,6 +33,7 @@ app.use('/api/wallets', walletsRoutes);
 app.use('/api/prices', pricesRoutes);
 app.use('/api/extract', extractRoutes);
 app.use('/api/portfolio', portfolioRoutes);
+app.use('/api/dev', devLogsRoutes);
 
 // Root API endpoint
 app.get('/', (req, res) => {

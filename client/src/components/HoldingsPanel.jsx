@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useCurrency } from '../context/CurrencyContext';
-import { getAssetColor, getAssetLetter, getAssetName } from '../utils/assetColors';
+import { getAssetName } from '../utils/assetColors';
+import { AssetLogo } from './AssetLogo';
 
 /** 3px progress bar showing weight */
 function WeightBar({ pct }) {
@@ -17,8 +18,6 @@ function WeightBar({ pct }) {
 /** Single holding row */
 function HoldingRow({ row, prices }) {
   const { fmtPrice, fmtPct, currency } = useCurrency();
-  const color = getAssetColor(row.symbol);
-  const letter = getAssetLetter(row.symbol);
   const priceEntry = prices[row.symbol];
   const name = getAssetName(row.symbol, null, priceEntry);
 
@@ -39,24 +38,13 @@ function HoldingRow({ row, prices }) {
       }}
     >
       {/* Asset column */}
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
-        <div
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: '50%',
-            background: color,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            fontWeight: 600,
-            fontSize: 11,
-            flexShrink: 0,
-          }}
-        >
-          {letter}
-        </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0 }}>
+        <AssetLogo
+          symbol={row.symbol}
+          assetType={row.assetType || priceEntry?.assetType || 'crypto'}
+          customUrl={priceEntry?.logoUrl}
+          size={28}
+        />
         <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
           <div
             style={{

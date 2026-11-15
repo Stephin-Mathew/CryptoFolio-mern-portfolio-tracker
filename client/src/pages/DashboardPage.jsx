@@ -18,6 +18,8 @@ export const DashboardPage = ({
   onEditClick,
   onUpdatePrice,
   onResetPrice,
+  onUpdateLogo,
+  onResetLogo,
   onOpenAuthModal,
   onOpenAddWalletModal,
   rowStatuses,
@@ -118,6 +120,8 @@ export const DashboardPage = ({
         onEditClick={onEditClick}
         onUpdatePrice={onUpdatePrice}
         onResetPrice={onResetPrice}
+        onUpdateLogo={onUpdateLogo}
+        onResetLogo={onResetLogo}
         rowStatuses={rowStatuses}
         hideBuyPrice={activeTab === 'crypto'}
         displayCurrency={displayCurrency}

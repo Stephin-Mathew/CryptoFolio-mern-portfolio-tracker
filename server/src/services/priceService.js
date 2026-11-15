@@ -1,9 +1,11 @@
 import axios from 'axios';
 import https from 'https';
 import dns from 'dns';
+import crypto from 'crypto';
 import cron from 'node-cron';
 import { PriceCache } from '../models/PriceCache.js';
 import { PriceOverride } from '../models/PriceOverride.js';
+import { PriceFetchLog } from '../models/PriceFetchLog.js';
 import { Holding } from '../models/Holding.js';
 
 // Public DNS resolver to bypass ISP crypto DNS blocking (e.g. for pro-api.coinmarketcap.com)
@@ -55,15 +57,15 @@ const FALLBACK_PRICES = {
   OP: { price: 1.45, change24h: 1.8, change7d: 6.2, change30d: 12.4 },
   UNI: { price: 7.85, change24h: -0.5, change7d: 2.1, change30d: 5.8 },
   AAVE: { price: 155.2, change24h: 4.3, change7d: 11.8, change30d: 25.4 },
-  AAPL: { price: 224.5, change24h: 0.65, change7d: 1.8, change30d: 4.2 },
-  MSFT: { price: 418.2, change24h: -0.32, change7d: 0.9, change30d: 3.1 },
-  NVDA: { price: 128.4, change24h: 2.15, change7d: 5.8, change30d: 14.5 },
-  TSLA: { price: 215.6, change24h: -1.45, change7d: 4.2, change30d: -2.8 },
-  GOOGL: { price: 165.3, change24h: 0.42, change7d: 1.1, change30d: 2.9 },
-  AMZN: { price: 178.9, change24h: 0.88, change7d: 2.4, change30d: 6.1 },
-  META: { price: 512.0, change24h: 1.25, change7d: 3.8, change30d: 9.4 },
-  SPY: { price: 554.8, change24h: 0.35, change7d: 1.2, change30d: 3.5 },
-  QQQ: { price: 482.3, change24h: 0.52, change7d: 1.6, change30d: 4.8 },
+  AAPL: { price: 224.5, change24h: 0.65, change7d: 1.8, change30d: 4.2, assetType: 'stock', logoUrl: 'https://financialmodelingprep.com/image-stock/AAPL.png' },
+  MSFT: { price: 418.2, change24h: -0.32, change7d: 0.9, change30d: 3.1, assetType: 'stock', logoUrl: 'https://financialmodelingprep.com/image-stock/MSFT.png' },
+  NVDA: { price: 128.4, change24h: 2.15, change7d: 5.8, change30d: 14.5, assetType: 'stock', logoUrl: 'https://financialmodelingprep.com/image-stock/NVDA.png' },
+  TSLA: { price: 215.6, change24h: -1.45, change7d: 4.2, change30d: -2.8, assetType: 'stock', logoUrl: 'https://financialmodelingprep.com/image-stock/TSLA.png' },
+  GOOGL: { price: 165.3, change24h: 0.42, change7d: 1.1, change30d: 2.9, assetType: 'stock', logoUrl: 'https://financialmodelingprep.com/image-stock/GOOGL.png' },
+  AMZN: { price: 178.9, change24h: 0.88, change7d: 2.4, change30d: 6.1, assetType: 'stock', logoUrl: 'https://financialmodelingprep.com/image-stock/AMZN.png' },
+  META: { price: 512.0, change24h: 1.25, change7d: 3.8, change30d: 9.4, assetType: 'stock', logoUrl: 'https://financialmodelingprep.com/image-stock/META.png' },
+  SPY: { price: 554.8, change24h: 0.35, change7d: 1.2, change30d: 3.5, assetType: 'stock', logoUrl: 'https://assets.parqet.com/logos/symbol/SPY' },
+  QQQ: { price: 482.3, change24h: 0.52, change7d: 1.6, change30d: 4.8, assetType: 'stock', logoUrl: 'https://assets.parqet.com/logos/symbol/QQQ' },
   USD: { price: 1.0, change24h: 0, change7d: 0, change30d: 0 },
   USDT: { price: 1.0, change24h: 0.01, change7d: 0.02, change30d: 0.01 },
   USDC: { price: 1.0, change24h: 0.0, change7d: 0.01, change30d: 0.0 },
@@ -185,6 +187,11 @@ const fetchYahooPrice = async (ticker) => {
       prevDayCloseInUsd = prevDayClose && inrRate > 0 ? Number(prevDayClose) / inrRate : prevDayCloseInUsd;
     }
 
+    const cleanUpper = ticker.toUpperCase();
+    const defaultLogoUrl = isINR
+      ? `https://assets.parqet.com/logos/symbol/${cleanUpper}`
+      : `https://financialmodelingprep.com/image-stock/${cleanUpper}.png`;
+
     return {
       price: Number(priceInUsd.toFixed(6)),
       prevDayClose: prevDayCloseInUsd !== null ? Number(prevDayCloseInUsd.toFixed(6)) : null,
@@ -195,6 +202,7 @@ const fetchYahooPrice = async (ticker) => {
       change30d: Number(change30d.toFixed(4)),
       marketState,
       assetType: 'stock',
+      logoUrl: defaultLogoUrl,
     };
   } catch (err) {
     console.warn(`⚠️ Yahoo Finance fetch failed for ${ticker}: ${err.message}`);
@@ -285,7 +293,7 @@ export const fetchMutualFundNav = async (schemeCode) => {
     if (!latestNav) return null;
 
     const change24h = nav1d > 0 ? ((latestNav - nav1d) / nav1d) * 100 : 0;
-    const change7d  = nav7d  > 0 ? ((latestNav - nav7d)  / nav7d)  * 100 : 0;
+    const change7d = nav7d > 0 ? ((latestNav - nav7d) / nav7d) * 100 : 0;
     const change30d = nav30d > 0 ? ((latestNav - nav30d) / nav30d) * 100 : 0;
 
     // Convert NAV from INR to USD for unified price field
@@ -297,7 +305,7 @@ export const fetchMutualFundNav = async (schemeCode) => {
       navInr: Number(latestNav.toFixed(4)),
       schemeName: meta?.scheme_name ?? meta?.fund_house ?? null,
       change24h: Number(change24h.toFixed(4)),
-      change7d:  Number(change7d.toFixed(4)),
+      change7d: Number(change7d.toFixed(4)),
       change30d: Number(change30d.toFixed(4)),
       assetType: 'mutual_fund',
     };
@@ -528,11 +536,11 @@ export const resolveMutualFundVariants = async (query, targetPrice = null) => {
 // Stock/ETF tickers that should use Yahoo Finance (not CMC/CoinGecko)
 // Covers Indian exchange suffixes too: .NS (NSE), .BO (BSE)
 const STOCK_TICKERS = new Set([
-  'AAPL','MSFT','NVDA','TSLA','GOOGL','GOOG','AMZN','META','SPY','QQQ',
-  'NFLX','AMD','INTC','BABA','V','MA','JPM','BAC','WMT','DIS',
-  'RELIANCE.NS','TCS.NS','INFY.NS','HDFCBANK.NS','ICICIBANK.NS',
-  'WIPRO.NS','LT.NS','BAJFINANCE.NS','HINDUNILVR.NS','SBIN.NS',
-  'TATAMOTORS.NS','ADANIENT.NS','MARUTI.NS','AXISBANK.NS','KOTAKBANK.NS',
+  'AAPL', 'MSFT', 'NVDA', 'TSLA', 'GOOGL', 'GOOG', 'AMZN', 'META', 'SPY', 'QQQ',
+  'NFLX', 'AMD', 'INTC', 'BABA', 'V', 'MA', 'JPM', 'BAC', 'WMT', 'DIS',
+  'RELIANCE.NS', 'TCS.NS', 'INFY.NS', 'HDFCBANK.NS', 'ICICIBANK.NS',
+  'WIPRO.NS', 'LT.NS', 'BAJFINANCE.NS', 'HINDUNILVR.NS', 'SBIN.NS',
+  'TATAMOTORS.NS', 'ADANIENT.NS', 'MARUTI.NS', 'AXISBANK.NS', 'KOTAKBANK.NS',
 ]);
 
 /**
@@ -679,6 +687,8 @@ export const getPricesForSymbols = async (symbols = [], userId = null) => {
         change24h: entry.change24h || 0,
         change7d: entry.change7d || 0,
         change30d: entry.change30d || 0,
+        logoUrl: entry.logoUrl ?? (entry.cmcId ? `https://s2.coinmarketcap.com/static/img/coins/64x64/${entry.cmcId}.png` : null),
+        cmcId: entry.cmcId ?? null,
         ...(entry.assetType === 'stock' && {
           prevDayClose: entry.prevDayClose ?? null,
           marketState: entry.marketState ?? null,
@@ -702,6 +712,8 @@ export const getPricesForSymbols = async (symbols = [], userId = null) => {
         change30d: entry.change30d || 0,
         currency: entry.currency || 'USD',
         priceInr: entry.priceInr ?? null,
+        logoUrl: entry.logoUrl ?? (entry.cmcId ? `https://s2.coinmarketcap.com/static/img/coins/64x64/${entry.cmcId}.png` : null),
+        cmcId: entry.cmcId ?? null,
         ...(entry.assetType === 'stock' && {
           prevDayClose: entry.prevDayClose ?? null,
           marketState: entry.marketState ?? null,
@@ -750,7 +762,7 @@ export const getPricesForSymbols = async (symbols = [], userId = null) => {
 
   if (symbolsToRefresh.length > 0) {
     console.log(`🔍 Fetching live quotes for ${symbolsToRefresh.length} symbols (${missingSymbols.length} missing, ${staleSymbols.length} stale)`);
-    const fetched = await fetchAndCachePrices(symbolsToRefresh);
+    const fetched = await fetchAndCachePrices(symbolsToRefresh, 'page_load');
     Object.assign(priceMap, fetched);
   }
 
@@ -759,6 +771,7 @@ export const getPricesForSymbols = async (symbols = [], userId = null) => {
 
   cleanSymbols.forEach((sym) => {
     const ov = overrideMap.get(sym);
+    const customLogo = ov?.customLogoUrl || (ov?.customLogoCmcId ? `https://s2.coinmarketcap.com/static/img/coins/64x64/${ov.customLogoCmcId}.png` : null);
 
     if (ov) {
       if (ov.mappedSymbol) {
@@ -779,6 +792,8 @@ export const getPricesForSymbols = async (symbols = [], userId = null) => {
           isCustom: true,
           isLocked: !!ov.isLocked,
           mappedSymbol: mappedTarget,
+          logoUrl: customLogo || targetQuote.logoUrl || null,
+          isCustomLogo: !!customLogo,
         };
       } else if (ov.price !== null && ov.price !== undefined) {
         const baseQuote = priceMap[sym] || {};
@@ -796,9 +811,15 @@ export const getPricesForSymbols = async (symbols = [], userId = null) => {
           isCustom: true,
           isLocked: !!ov.isLocked,
           mappedSymbol: null,
+          logoUrl: customLogo || baseQuote.logoUrl || null,
+          isCustomLogo: !!customLogo,
         };
       } else {
-        finalPriceMap[sym] = priceMap[sym] || { price: 0, change24h: 0, change7d: 0, change30d: 0 };
+        const baseQuote = priceMap[sym] || { price: 0, change24h: 0, change7d: 0, change30d: 0 };
+        finalPriceMap[sym] = {
+          ...baseQuote,
+          ...(customLogo ? { logoUrl: customLogo, isCustomLogo: true } : {}),
+        };
       }
     } else {
       finalPriceMap[sym] = priceMap[sym] || { price: 0, change24h: 0, change7d: 0, change30d: 0 };
@@ -821,7 +842,10 @@ export const getPricesForSymbols = async (symbols = [], userId = null) => {
  *   3. Crypto tickers           → CoinMarketCap (primary) → CoinGecko (fallback)
  *   4. Static baseline          → FALLBACK_PRICES for anything that errors out
  */
-export const fetchAndCachePrices = async (symbols = []) => {
+export const fetchAndCachePrices = async (symbols = [], triggerType = 'cache_miss') => {
+  const batchStart = Date.now();
+  const batchId = `batch_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+  const symbolSourceMap = {};  // symbol -> { source, success, error, mappedTo, ... }
   const result = {};
 
   // ── Stablecoins / fiat shortcuts ──────────────────────────────────────────
@@ -829,6 +853,7 @@ export const fetchAndCachePrices = async (symbols = []) => {
   symbols.forEach((sym) => {
     if (FIAT_STABLE.has(sym)) {
       result[sym] = { price: 1.0, change24h: 0, change7d: 0, change30d: 0 };
+      symbolSourceMap[sym] = { source: 'stablecoin', success: true, assetType: 'fiat' };
     }
   });
 
@@ -836,6 +861,7 @@ export const fetchAndCachePrices = async (symbols = []) => {
   if (symbols.includes('INR')) {
     const liveInr = await fetchLiveInrRate();
     result['INR'] = { price: liveInr, rate: liveInr, change24h: 0, change7d: 0, change30d: 0 };
+    symbolSourceMap['INR'] = { source: 'exchange_rate_api', success: true, assetType: 'fiat' };
   }
 
   // Partition remaining symbols by asset type
@@ -854,7 +880,7 @@ export const fetchAndCachePrices = async (symbols = []) => {
     // Non-blocking fallback
   }
 
-  const mfCodes    = remaining.filter((s) => isMfSchemeCode(s) || knownMfSymbols.has(s));
+  const mfCodes = remaining.filter((s) => isMfSchemeCode(s) || knownMfSymbols.has(s));
   const stockTicks = remaining.filter((s) => !isMfSchemeCode(s) && !knownMfSymbols.has(s) && (isStockTicker(s) || knownStockSymbols.has(s)));
   const cryptoSyms = remaining.filter((s) => !isMfSchemeCode(s) && !knownMfSymbols.has(s) && !isStockTicker(s) && !knownStockSymbols.has(s));
 
@@ -862,12 +888,27 @@ export const fetchAndCachePrices = async (symbols = []) => {
   if (mfCodes.length > 0) {
     const mfResults = await fetchMutualFundNavBatch(mfCodes);
     Object.assign(result, mfResults);
+    mfCodes.forEach((code) => {
+      symbolSourceMap[code] = {
+        source: 'mfapi',
+        success: !!mfResults[code],
+        assetType: 'mutual_fund',
+        mappedTo: code,
+        error: mfResults[code] ? null : 'No NAV data returned',
+      };
+    });
   }
 
   // ── 2. Stocks / ETFs — Yahoo Finance ──────────────────────────────────────
   if (stockTicks.length > 0) {
     const yahooResults = await fetchYahooStockPrices(stockTicks);
     Object.assign(result, yahooResults);
+
+    stockTicks.forEach((t) => {
+      if (yahooResults[t]) {
+        symbolSourceMap[t] = { source: 'yahoo', success: true, assetType: 'stock' };
+      }
+    });
 
     // For any stock tickers Yahoo couldn't resolve that lack an exchange suffix,
     // retry automatically with the .NS suffix (covers most Indian NSE stocks).
@@ -885,22 +926,27 @@ export const fetchAndCachePrices = async (symbols = []) => {
             result[bare] = nsResults[nsTick];
             result[nsTick] = nsResults[nsTick];
             console.log(`✅ Resolved ${bare} → ${nsTick} (NSE auto-probe)`);
+            symbolSourceMap[bare] = { source: 'yahoo', success: true, assetType: 'stock', mappedTo: nsTick };
+            symbolSourceMap[nsTick] = { source: 'yahoo', success: true, assetType: 'stock' };
           }
         });
       }
       const stillMissed = missed.filter((t) => !result[t]);
       if (stillMissed.length > 0) {
         console.warn(`⚠️ Yahoo Finance: no data for [${stillMissed.join(', ')}] — using fallback baseline`);
+        stillMissed.forEach((t) => {
+          symbolSourceMap[t] = { source: 'yahoo', success: false, assetType: 'stock', error: 'No quote from Yahoo Finance' };
+        });
       }
     }
   }
 
   // ── 3. Crypto — CoinMarketCap (primary) ────────────────────────────────────
   const cmcApiKey = process.env.COINMARKETCAP_API_KEY;
-  const NON_CMC   = new Set(['INR', 'USD', 'USDT', 'USDC']);
+  const NON_CMC = new Set(['INR', 'USD', 'USDT', 'USDC']);
   const CMC_VALID = /^[A-Z0-9]{1,10}$/;
 
-  const cmcSymbols      = cryptoSyms.filter((s) => !NON_CMC.has(s) && CMC_VALID.test(s) && !result[s]);
+  const cmcSymbols = cryptoSyms.filter((s) => !NON_CMC.has(s) && CMC_VALID.test(s) && !result[s]);
   const skippedToFallback = cryptoSyms.filter((s) => !NON_CMC.has(s) && !CMC_VALID.test(s));
   if (skippedToFallback.length > 0) {
     console.log(`⚠️  Non-standard symbols skipped (CMC invalid): [${skippedToFallback.join(', ')}]`);
@@ -922,12 +968,16 @@ export const fetchAndCachePrices = async (symbols = []) => {
       for (const sym of cmcSymbols) {
         if (data[sym] && data[sym].quote?.USD) {
           const usdQuote = data[sym].quote.USD;
+          const cmcId = data[sym].id;
           result[sym] = {
             price: Number(usdQuote.price || 0),
             change24h: Number(usdQuote.percent_change_24h || 0),
             change7d: Number(usdQuote.percent_change_7d || 0),
             change30d: Number(usdQuote.percent_change_30d || 0),
+            cmcId: cmcId || null,
+            logoUrl: cmcId ? `https://s2.coinmarketcap.com/static/img/coins/64x64/${cmcId}.png` : null,
           };
+          symbolSourceMap[sym] = { source: 'cmc', success: true, assetType: 'crypto', cmcId };
         }
       }
       console.log(`✅ CoinMarketCap: fetched ${Object.keys(result).length}/${cmcSymbols.length} crypto symbol(s).`);
@@ -971,6 +1021,7 @@ export const fetchAndCachePrices = async (symbols = []) => {
             change7d: Number(fallback.change7d || 0),
             change30d: Number(fallback.change30d || 0),
           };
+          symbolSourceMap[sym] = { source: 'coingecko', success: true, assetType: 'crypto', mappedTo: geckoId };
         }
       }
       console.log(`✅ CoinGecko fallback: fetched prices for ${cryptoSymbolsMissed.length} missed symbol(s).`);
@@ -1022,6 +1073,16 @@ export const fetchAndCachePrices = async (symbols = []) => {
         change7d: Number(fallbackEntry.change7d || 0),
         change30d: Number(fallbackEntry.change30d || 0),
       };
+
+      // Only mark as failed if price is zero (truly unknown symbol)
+      if (!symbolSourceMap[sym]) {
+        symbolSourceMap[sym] = {
+          source: 'fallback',
+          success: basePrice > 0,
+          assetType: fallbackEntry.assetType || 'crypto',
+          error: basePrice === 0 ? 'No live source available — using zero/baseline' : null,
+        };
+      }
     }
   }
 
@@ -1033,8 +1094,8 @@ export const fetchAndCachePrices = async (symbols = []) => {
         isMfSchemeCode(sym)
           ? 'mutual_fund'
           : (isStockTicker(sym) || sym.endsWith('.NS') || sym.endsWith('.BO'))
-          ? 'stock'
-          : 'crypto'
+            ? 'stock'
+            : 'crypto'
       );
 
       const cacheUpdate = {
@@ -1043,6 +1104,7 @@ export const fetchAndCachePrices = async (symbols = []) => {
         change7d: entry.change7d,
         change30d: entry.change30d,
         assetType,
+        source: symbolSourceMap[sym]?.source || (entry.cmcId ? 'cmc' : (assetType === 'stock' ? 'yahoo' : (assetType === 'mutual_fund' ? 'mfapi' : 'unknown'))),
         lastUpdated: new Date(),
       };
 
@@ -1060,6 +1122,8 @@ export const fetchAndCachePrices = async (symbols = []) => {
       }
       if (entry.currency) cacheUpdate.currency = entry.currency;
       if (entry.priceInr != null) cacheUpdate.priceInr = entry.priceInr;
+      if (entry.cmcId != null) cacheUpdate.cmcId = entry.cmcId;
+      if (entry.logoUrl != null) cacheUpdate.logoUrl = entry.logoUrl;
 
       return PriceCache.findOneAndUpdate(
         { symbol: sym },
@@ -1068,6 +1132,72 @@ export const fetchAndCachePrices = async (symbols = []) => {
       );
     })
   );
+
+  // ── 7. Log the batch fetch to PriceFetchLog ─────────────────────────────────
+  try {
+    const batchDuration = Date.now() - batchStart;
+    const logResults = symbols.map((sym) => {
+      const entry = result[sym] || {};
+      const srcInfo = symbolSourceMap[sym] || {};
+      const success = srcInfo.success !== undefined ? srcInfo.success : (entry.price > 0);
+      const assetType = srcInfo.assetType || entry.assetType || (
+        isMfSchemeCode(sym) ? 'mutual_fund'
+          : (isStockTicker(sym) || sym.endsWith('.NS') || sym.endsWith('.BO')) ? 'stock'
+            : 'crypto'
+      );
+
+      // Determine logo source
+      let logoSource = null;
+      if (entry.logoUrl) {
+        if (entry.logoUrl.includes('coinmarketcap.com')) logoSource = 'cmc';
+        else if (entry.logoUrl.includes('financialmodelingprep.com')) logoSource = 'fmp';
+        else if (entry.logoUrl.includes('parqet.com')) logoSource = 'parqet';
+        else logoSource = 'other';
+      }
+
+      return {
+        symbol: sym,
+        source: srcInfo.source || (entry.cmcId ? 'cmc' : (entry.assetType === 'stock' ? 'yahoo' : 'unknown')),
+        price: entry.price || 0,
+        assetType,
+        success,
+        error: srcInfo.error || null,
+        mappedFrom: srcInfo.mappedFrom || null,
+        mappedTo: srcInfo.mappedTo || null,
+        logoUrl: entry.logoUrl || null,
+        logoSource,
+        cmcId: entry.cmcId || srcInfo.cmcId || null,
+        change24h: entry.change24h ?? null,
+        change7d: entry.change7d ?? null,
+        change30d: entry.change30d ?? null,
+        currency: entry.currency || 'USD',
+        priceInr: entry.priceInr ?? null,
+        navInr: entry.navInr ?? null,
+        schemeName: entry.schemeName ?? null,
+        wasCached: false,
+        wasStale: false,
+      };
+    });
+
+    const successCount = logResults.filter((r) => r.success).length;
+    const failCount = logResults.filter((r) => !r.success).length;
+
+    // Fire and forget — don't block the price response
+    PriceFetchLog.create({
+      batchId,
+      trigger: triggerType,
+      totalSymbols: symbols.length,
+      successCount,
+      failCount,
+      durationMs: batchDuration,
+      results: logResults,
+      fetchedAt: new Date(),
+    }).catch((logErr) => {
+      console.warn('Failed to persist price fetch log:', logErr.message);
+    });
+  } catch (logError) {
+    console.warn('Error building price fetch log:', logError.message);
+  }
 
   return result;
 };
@@ -1083,7 +1213,7 @@ export const initPriceCron = () => {
       const symbols = cached.map((c) => c.symbol);
       if (symbols.length > 0) {
         console.log(`🔄 Cron executing: Refreshing ${symbols.length} portfolio price quotes...`);
-        await fetchAndCachePrices(symbols);
+        await fetchAndCachePrices(symbols, 'cron');
       }
     } catch (err) {
       console.error('Error during price refresh cron:', err.message);

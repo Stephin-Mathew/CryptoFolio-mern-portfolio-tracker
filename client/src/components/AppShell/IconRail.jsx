@@ -3,6 +3,7 @@ import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useWallets } from '../../context/WalletContext';
+import { useCurrency } from '../../context/CurrencyContext';
 import { getWalletColor } from '../../utils/assetColors';
 import {
   LayoutGrid,
@@ -15,6 +16,7 @@ import {
   ChevronRight,
   Plus,
   PanelLeft,
+  Terminal,
 } from 'lucide-react';
 
 // Logo tile: 40x40 dark square with rotated white square inside
@@ -45,6 +47,13 @@ function LogoTile() {
   );
 }
 
+const CURRENCY_CONFIG = [
+  { id: 'USD', symbol: '$', name: 'USD', color: '#10B981', bg: 'rgba(16, 185, 129, 0.14)' },
+  { id: 'INR', symbol: '₹', name: 'INR', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.14)' },
+  { id: 'BTC', symbol: '₿', name: 'BTC', color: '#F7931A', bg: 'rgba(247, 147, 26, 0.14)' },
+  { id: 'HYPE', symbol: '⚡', name: 'HYPE', color: '#06B6D4', bg: 'rgba(6, 182, 212, 0.14)' },
+];
+
 /** Icon rail — 64px wide, always visible on ≥1100px. */
 export function IconRail({
   isSidebarCollapsed,
@@ -57,32 +66,42 @@ export function IconRail({
 }) {
   const { isDark, toggleTheme } = useTheme();
   const { logout } = useAuth();
+  const { currency, setCurrency, rates } = useCurrency();
   const location = useLocation();
 
   const isOverview = location.pathname === '/';
   const isHoldings = location.pathname === '/holdings';
   const isWallets = location.pathname.startsWith('/wallets');
   const isAnalytics = location.pathname === '/analytics';
+  const isDev = location.pathname.startsWith('/dev');
 
   // Import dropdown
   const [importOpen, setImportOpen] = useState(false);
   const importRef = useRef(null);
+
+  // Currency dropdown
+  const [currencyOpen, setCurrencyOpen] = useState(false);
+  const currencyRef = useRef(null);
 
   useEffect(() => {
     const handler = (e) => {
       if (importRef.current && !importRef.current.contains(e.target)) {
         setImportOpen(false);
       }
+      if (currencyRef.current && !currencyRef.current.contains(e.target)) {
+        setCurrencyOpen(false);
+      }
     };
-    if (importOpen) document.addEventListener('mousedown', handler);
+    if (importOpen || currencyOpen) document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [importOpen]);
+  }, [importOpen, currencyOpen]);
+
+  const activeCurrency = CURRENCY_CONFIG.find((c) => c.id === currency) || CURRENCY_CONFIG[0];
 
   return (
     <nav
       className="icon-rail"
       aria-label="Main navigation"
-      style={{ position: 'relative' }}
     >
       {/* Logo */}
       <Link to="/" aria-label="Home" style={{ marginBottom: 10 }}>
@@ -133,6 +152,17 @@ export function IconRail({
         <BarChart2 size={20} strokeWidth={1.6} />
       </NavLink>
 
+      {/* Nav: Dev Price Logs */}
+      <NavLink
+        to="/dev/price-logs"
+        className={({ isActive }) => `rib${isActive || isDev ? ' active' : ''}`}
+        title="Dev — Price Engine Logs"
+        aria-label="Dev — Price Engine Logs"
+        aria-current={isDev ? 'page' : undefined}
+      >
+        <Terminal size={20} strokeWidth={1.6} />
+      </NavLink>
+
       {/* Import with AI (opens dropdown) */}
       <div style={{ position: 'relative' }} ref={importRef}>
         <button
@@ -152,7 +182,7 @@ export function IconRail({
               position: 'absolute',
               left: '52px',
               top: 0,
-              zIndex: 60,
+              zIndex: 100,
               background: 'var(--panel-bg)',
               border: '1px solid var(--card-border)',
               borderRadius: 12,
@@ -216,6 +246,183 @@ export function IconRail({
       {/* Spacer */}
       <div style={{ flex: 1 }} />
 
+      {/* Currency Switcher */}
+      <div style={{ position: 'relative' }} ref={currencyRef}>
+        <button
+          className={`rib ${currencyOpen ? 'active' : ''}`}
+          onClick={() => setCurrencyOpen((p) => !p)}
+          title={`Display currency: ${activeCurrency.name} (Click to switch)`}
+          aria-label={`Display currency: ${activeCurrency.name}`}
+          aria-expanded={currencyOpen}
+          style={{
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2,
+            padding: 4,
+          }}
+        >
+          <div
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: '50%',
+              background: activeCurrency.bg,
+              color: activeCurrency.color,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 12,
+              fontWeight: 700,
+              border: `1.5px solid ${activeCurrency.color}45`,
+              transition: 'all 0.15s ease',
+            }}
+          >
+            {activeCurrency.symbol}
+          </div>
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 700,
+              color: activeCurrency.color,
+              lineHeight: 1,
+            }}
+          >
+            {activeCurrency.id}
+          </span>
+        </button>
+
+        {currencyOpen && (
+          <div
+            className="animate-fadeIn"
+            style={{
+              position: 'absolute',
+              left: '54px',
+              bottom: 0,
+              zIndex: 100,
+              background: 'var(--panel-bg)',
+              border: '1px solid var(--card-border)',
+              borderRadius: 14,
+              boxShadow: '0 12px 36px rgba(0,0,0,0.2)',
+              padding: '12px 14px',
+              width: 232,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '0 2px' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.08em' }}>
+                Display Currency
+              </span>
+              <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--positive, #10B981)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'currentColor' }} />
+                Live
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              {CURRENCY_CONFIG.map((c) => {
+                const isSelected = currency === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      setCurrency(c.id);
+                      setCurrencyOpen(false);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 7,
+                      padding: '7px 9px',
+                      borderRadius: 10,
+                      border: isSelected ? `1.5px solid ${c.color}` : '1px solid var(--card-border)',
+                      background: isSelected ? 'var(--card-bg)' : 'var(--shell-bg)',
+                      boxShadow: isSelected ? `0 2px 8px ${c.color}25, 0 1px 3px rgba(0,0,0,0.06)` : 'none',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      transition: 'all 0.18s ease',
+                      position: 'relative',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: '50%',
+                        background: isSelected ? c.bg : 'var(--neutral-chip-bg)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: isSelected ? c.color : 'var(--text-muted)',
+                        flexShrink: 0,
+                        transition: 'all 0.18s ease',
+                      }}
+                    >
+                      {c.symbol}
+                    </div>
+
+                    <div style={{ textAlign: 'left', minWidth: 0, flex: 1 }}>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          fontWeight: isSelected ? 700 : 500,
+                          color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
+                          lineHeight: 1.1,
+                        }}
+                      >
+                        {c.name}
+                      </div>
+                    </div>
+
+                    {isSelected && (
+                      <span
+                        style={{
+                          width: 5,
+                          height: 5,
+                          borderRadius: '50%',
+                          background: c.color,
+                          flexShrink: 0,
+                        }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div
+              style={{
+                marginTop: 10,
+                padding: '6px 8px',
+                borderRadius: 7,
+                background: 'var(--shell-bg)',
+                border: '1px solid var(--divider-2)',
+                fontSize: 10,
+                fontWeight: 500,
+                color: 'var(--text-muted)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              <span>Rate:</span>
+              <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+                {currency === 'USD' && '1 USD = $1.00 (Base)'}
+                {currency === 'INR' && `1 USD ≈ ₹${Number(rates?.inrRate || 95.7).toFixed(1)}`}
+                {currency === 'BTC' && `1 BTC ≈ $${Math.round(rates?.btcPrice || 84300).toLocaleString()}`}
+                {currency === 'HYPE' && `1 HYPE ≈ $${Number(rates?.hypePrice || 93.8).toFixed(2)}`}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Theme toggle */}
       <button
         className="rib"
@@ -248,6 +455,40 @@ export function ExpandedSidebar({
   wallets,
 }) {
   const location = useLocation();
+  const { fmt } = useCurrency();
+  const inrRate = Number(prices?.INR?.price || prices?.INR?.rate || 95.7);
+
+  const getWalletValue = (walletId) => {
+    let v = 0;
+    if (!holdings) return 0;
+    holdings.forEach((h) => {
+      if (h.walletId?.toString() !== walletId?.toString()) return;
+      let currentPrice = 0;
+      const entry = prices?.[h.symbol];
+      const isINR =
+        h.assetType === 'mutual_fund' ||
+        h.currency === 'INR' ||
+        entry?.currency === 'INR' ||
+        (entry?.priceInr != null && entry.priceInr > 0) ||
+        (entry?.navInr != null && entry.navInr > 0) ||
+        h.symbol?.endsWith('.NS') ||
+        h.symbol?.endsWith('.BO');
+
+      if (h.assetType === 'cash') {
+        currentPrice = h.symbol === 'INR' && inrRate > 0 ? 1 / inrRate : 1;
+      } else if (entry !== undefined) {
+        if (typeof entry === 'object') {
+          currentPrice = Number(entry?.price || 0);
+        } else {
+          currentPrice = Number(entry) || 0;
+        }
+      } else {
+        currentPrice = isINR && inrRate > 0 ? (Number(h.avgBuyPrice) || 0) / inrRate : (Number(h.avgBuyPrice) || 0);
+      }
+      v += (Number(h.quantity) || 0) * currentPrice;
+    });
+    return v;
+  };
 
   return (
     <div
@@ -292,9 +533,11 @@ export function ExpandedSidebar({
             No wallets yet
           </div>
         ) : (
-          wallets.map((wallet, idx) => {
+          wallets.map((wallet) => {
             const color = getWalletColor(wallet, wallets);
             const isActive = location.pathname === `/wallets/${wallet._id}`;
+            const val = getWalletValue(wallet._id);
+
             return (
               <Link
                 key={wallet._id}
@@ -308,12 +551,14 @@ export function ExpandedSidebar({
                   textDecoration: 'none',
                   background: isActive ? 'var(--card-bg)' : 'transparent',
                   marginBottom: 2,
-                  transition: 'background 0.15s',
+                  transition: 'all 0.15s ease',
+                  border: isActive ? '1px solid var(--card-border)' : '1px solid transparent',
+                  boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.05)' : 'none',
                 }}
                 onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'var(--card-bg)'; }}
                 onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
                   <span
                     style={{
                       width: 8,
@@ -321,13 +566,14 @@ export function ExpandedSidebar({
                       borderRadius: '50%',
                       background: color,
                       flexShrink: 0,
+                      boxShadow: isActive ? `0 0 6px ${color}88` : 'none',
                     }}
                   />
                   <span
                     style={{
                       fontSize: 13,
                       fontWeight: isActive ? 600 : 400,
-                      color: 'var(--text-primary)',
+                      color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
@@ -336,9 +582,18 @@ export function ExpandedSidebar({
                     {wallet.name}
                   </span>
                 </div>
-                {isActive && (
-                  <ChevronRight size={12} color="var(--text-muted)" />
-                )}
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
+                    fontWeight: isActive ? 700 : 500,
+                    flexShrink: 0,
+                    marginLeft: 6,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {fmt(val)}
+                </span>
               </Link>
             );
           })

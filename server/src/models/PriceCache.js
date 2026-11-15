@@ -72,6 +72,21 @@ const priceCacheSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    // CoinMarketCap coin ID (crypto only)
+    cmcId: {
+      type: Number,
+      default: null,
+    },
+    // Remote logo URL (e.g. from CoinMarketCap static CDN)
+    logoUrl: {
+      type: String,
+      default: null,
+    },
+    // Source provider ('cmc' | 'yahoo' | 'mfapi' | 'coingecko' | 'stablecoin' | 'fallback')
+    source: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,

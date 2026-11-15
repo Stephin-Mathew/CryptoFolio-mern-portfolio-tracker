@@ -13,6 +13,8 @@ import { Holding } from '../models/Holding.js';
 import { PriceOverride } from '../models/PriceOverride.js';
 import { PriceCache } from '../models/PriceCache.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { searchCmcCoins } from '../utils/cryptoCoinList.js';
+import { searchStocks } from '../utils/stockList.js';
 
 const router = express.Router();
 
@@ -56,7 +58,7 @@ router.post('/refresh', async (req, res) => {
     const userHoldings = await Holding.find({ userId: req.user._id }).select('symbol');
     const symbols = [...new Set([...userHoldings.map((h) => h.symbol), ...BENCHMARK_SYMBOLS])];
 
-    await fetchAndCachePrices(symbols);
+    await fetchAndCachePrices(symbols, 'manual_refresh');
     const refreshedPriceMap = await getPricesForSymbols(symbols, req.user._id);
 
     res.json({ message: 'Price cache updated', prices: refreshedPriceMap });
@@ -175,6 +177,138 @@ router.delete('/cache/:symbol', async (req, res) => {
   } catch (error) {
     console.error('Cache Bust Error:', error);
     res.status(500).json({ message: error.message || 'Failed to clear price cache' });
+  }
+});
+
+/**
+ * @route   GET /api/prices/logo/search
+ * @desc    Search verified logos for crypto and stocks
+ * @access  Private
+ * @query   q {string} - search query (symbol or name)
+ * @query   assetType {string} - 'crypto' | 'stock' (optional)
+ */
+router.get('/logo/search', async (req, res) => {
+  try {
+    const query = (req.query.q || '').trim();
+    const assetType = (req.query.assetType || '').toLowerCase();
+
+    let results = [];
+    if (assetType === 'stock') {
+      results = searchStocks(query);
+    } else if (assetType === 'crypto') {
+      results = searchCmcCoins(query);
+    } else {
+      // Both: check if query looks like a stock ticker or return blended results
+      const stockResults = searchStocks(query);
+      const cryptoResults = searchCmcCoins(query);
+      results = [...stockResults.slice(0, 15), ...cryptoResults.slice(0, 15)];
+    }
+
+    res.json({ results });
+  } catch (error) {
+    console.error('Logo Search Error:', error);
+    res.status(500).json({ message: 'Failed to search logos' });
+  }
+});
+
+/**
+ * @route   POST /api/prices/logo/override
+ * @desc    Set a user-scoped custom logo URL / CMC ID for a symbol
+ * @access  Private
+ */
+router.post('/logo/override', async (req, res) => {
+  try {
+    const { symbol, logoUrl, cmcId } = req.body;
+    if (!symbol || !symbol.trim()) {
+      return res.status(400).json({ message: 'Symbol is required' });
+    }
+
+    const cleanSymbol = symbol.trim().toUpperCase();
+    let finalLogoUrl = logoUrl ? String(logoUrl).trim() : null;
+    let finalCmcId = cmcId ? Number(cmcId) : null;
+
+    // If logoUrl is purely numeric (e.g. user entered "26997"), treat it as cmcId
+    if (finalLogoUrl && /^\d+$/.test(finalLogoUrl)) {
+      finalCmcId = parseInt(finalLogoUrl, 10);
+      finalLogoUrl = `https://s2.coinmarketcap.com/static/img/coins/64x64/${finalCmcId}.png`;
+    } else if (!finalLogoUrl && finalCmcId) {
+      finalLogoUrl = `https://s2.coinmarketcap.com/static/img/coins/64x64/${finalCmcId}.png`;
+    }
+
+    if (!finalLogoUrl && !finalCmcId) {
+      return res.status(400).json({ message: 'Please provide either a logo URL or a CoinMarketCap ID' });
+    }
+
+    const override = await PriceOverride.findOneAndUpdate(
+      { userId: req.user._id, symbol: cleanSymbol },
+      {
+        $set: {
+          userId: req.user._id,
+          symbol: cleanSymbol,
+          customLogoUrl: finalLogoUrl,
+          customLogoCmcId: finalCmcId,
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    let priceMap = {};
+    try {
+      priceMap = await getPricesForSymbols([cleanSymbol], req.user._id);
+    } catch (pe) {
+      console.warn('Could not re-fetch price quote after logo override:', pe.message);
+    }
+
+    const updatedPrice = priceMap[cleanSymbol] || {
+      logoUrl: finalLogoUrl,
+      isCustomLogo: true,
+    };
+
+    res.json({
+      message: `Logo updated for ${cleanSymbol}`,
+      symbol: cleanSymbol,
+      override,
+      price: updatedPrice,
+      prices: priceMap,
+    });
+  } catch (error) {
+    console.error('Logo Override Error:', error);
+    res.status(500).json({ message: error.message || 'Failed to save logo override' });
+  }
+});
+
+/**
+ * @route   DELETE /api/prices/logo/override/:symbol
+ * @desc    Remove custom logo override and revert to default automatic logo
+ * @access  Private
+ */
+router.delete('/logo/override/:symbol', async (req, res) => {
+  try {
+    const cleanSymbol = req.params.symbol.trim().toUpperCase();
+
+    const existing = await PriceOverride.findOne({ userId: req.user._id, symbol: cleanSymbol });
+    if (existing) {
+      // If there's no custom price or mapping, delete the record completely
+      if (!existing.price && !existing.mappedSymbol) {
+        await PriceOverride.deleteOne({ _id: existing._id });
+      } else {
+        existing.customLogoUrl = null;
+        existing.customLogoCmcId = null;
+        await existing.save();
+      }
+    }
+
+    const priceMap = await getPricesForSymbols([cleanSymbol], req.user._id);
+
+    res.json({
+      message: `Custom logo for ${cleanSymbol} removed — reverted to default`,
+      symbol: cleanSymbol,
+      price: priceMap[cleanSymbol],
+      prices: priceMap,
+    });
+  } catch (error) {
+    console.error('Remove Logo Override Error:', error);
+    res.status(500).json({ message: error.message || 'Failed to remove logo override' });
   }
 });
 
@@ -449,12 +583,12 @@ router.post('/lookup-batch', async (req, res) => {
           preferredTick && yahooQuotes[preferredTick]
             ? preferredTick
             : yahooQuotes[nsTick]
-            ? nsTick
-            : yahooQuotes[upper]
-            ? upper
-            : (mappedSymbol && yahooQuotes[mappedSymbol])
-            ? mappedSymbol
-            : null;
+              ? nsTick
+              : yahooQuotes[upper]
+                ? upper
+                : (mappedSymbol && yahooQuotes[mappedSymbol])
+                  ? mappedSymbol
+                  : null;
 
         if (quote && quote.price > 0) {
           const isINR = quote.currency === 'INR' || (resolvedTicker && (resolvedTicker.endsWith('.NS') || resolvedTicker.endsWith('.BO')));
