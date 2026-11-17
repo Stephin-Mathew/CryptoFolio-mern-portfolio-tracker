@@ -24,8 +24,8 @@ import { AuthModal } from './components/AuthModal';
 import { LoadingScreen } from './components/LoadingScreen';
 import { sortWalletsByValue } from './utils/walletUtils';
 
-// Routes where the tab bar (Overview | Holdings | Wallets) is shown
-const TAB_BAR_ROUTES = ['/', '/holdings', '/wallets'];
+// Routes where the tab bar (Overview | Holdings | Wallets | Dev Logs) is shown
+const TAB_BAR_ROUTES = ['/', '/holdings', '/wallets', '/dev/price-logs'];
 
 function AppContent() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -437,6 +437,12 @@ function AppContent() {
             <TopBar
               activeWalletName={activeWallet?.name}
               onOpenAuthModal={() => setIsAuthModalOpen(true)}
+              onOpenUploadModal={openUploadModal}
+              onOpenJsonExtractModal={openJsonExtractModal}
+              onOpenAddModal={openAddHoldingModal}
+              onOpenAddWalletModal={openAddWalletModal}
+              onRefreshPrices={handleRefreshPrices}
+              refreshingPrices={refreshingPrices}
             />
 
             {/* Tab bar (main routes only, authenticated) */}

@@ -8,7 +8,7 @@ import { PortfolioValueChart } from '../components/PortfolioValueChart';
 import { HoldingsPanel } from '../components/HoldingsPanel';
 import { WalletWeightCard } from '../components/WalletWeightCard';
 import { TopMoversCard } from '../components/TopMoversCard';
-import { DataHealthCard } from '../components/DataHealthCard';
+import { DailyPnlBarCard } from '../components/DailyPnlBarCard';
 
 // Shimmer placeholder for stat cards
 function StatCardSkeleton() {
@@ -65,7 +65,7 @@ export function OverviewPage({
   onRefreshPrices,
   rowStatuses,
 }) {
-  const { fmt, fmtDelta, fmtPct, currency } = useCurrency();
+  const { fmt, fmtDelta, fmtPct } = useCurrency();
   const { wallets } = useWallets();
 
   const metrics = useMemo(
@@ -199,34 +199,39 @@ export function OverviewPage({
         />
       </div>
 
-      {/* ── Row 2: Chart (flex 2.1) + Holdings panel (flex 1.05) ── */}
+      {/* ── Row 2: Chart (flex 2.1) + Daily PnL Bar Card (flex 1.05) ── */}
       <div className="r1" style={{ display: 'flex', gap: 16 }}>
         <div className="card r1-chart-card" style={{ flex: 2.1, minWidth: 0, height: 380, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <PortfolioValueChart holdings={holdings} prices={prices} />
         </div>
-        <div className="card r1-holdings-card" style={{ flex: 1.05, minWidth: 0, height: 380, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <HoldingsPanel
-            perSymbol={metrics.perSymbol}
+        <div className="card r1-pnl-card" style={{ flex: 1.05, minWidth: 0, height: 380, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0 }}>
+          <DailyPnlBarCard
+            holdings={holdings}
             prices={prices}
+            metrics={metrics}
             loading={loading}
           />
         </div>
       </div>
 
-      {/* ── Row 3: three equal cards ────────────────────────────── */}
+      {/* ── Row 3: three equal cards (Wallet weight + Top movers + Holdings panel) ── */}
       <div className="r3" style={{ display: 'flex', gap: 16 }}>
-        <div className="card r3-wallet-card" style={{ flex: 1, minWidth: 0, height: 330, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className="card r3-wallet-card" style={{ flex: 1, minWidth: 0, height: 340, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <WalletWeightCard
             perWallet={metrics.perWallet}
             wallets={wallets}
             totalPositions={metrics.positionsCount}
           />
         </div>
-        <div className="card r3-movers-card" style={{ flex: 1, minWidth: 0, height: 330, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className="card r3-movers-card" style={{ flex: 1, minWidth: 0, height: 340, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <TopMoversCard movers={metrics.movers} />
         </div>
-        <div className="card r3-health-card" style={{ flex: 1, minWidth: 0, height: 330, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <DataHealthCard prices={prices} onRefreshPrices={onRefreshPrices} />
+        <div className="card r3-holdings-card" style={{ flex: 1, minWidth: 0, height: 340, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <HoldingsPanel
+            perSymbol={metrics.perSymbol}
+            prices={prices}
+            loading={loading}
+          />
         </div>
       </div>
 
@@ -237,7 +242,8 @@ export function OverviewPage({
           .stats-grid > div:first-child .stat-value { font-size: 26px !important; }
           .r1, .r3 { flex-direction: column !important; gap: 12px !important; }
           .r1 > *, .r3 > * { height: auto !important; }
-          .r1-holdings-card { height: 380px !important; }
+          .r1-pnl-card { min-height: 290px !important; height: auto !important; }
+          .r3-holdings-card { height: 380px !important; }
           .r3-wallet-card { height: 340px !important; }
         }
       `}</style>
