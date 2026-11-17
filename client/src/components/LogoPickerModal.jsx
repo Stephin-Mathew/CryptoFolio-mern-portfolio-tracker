@@ -155,7 +155,9 @@ export const LogoPickerModal = ({
               <p className="text-xs text-[var(--text-muted)]">
                 {assetType === 'stock'
                   ? 'Search verified stock & ETF logos or provide a custom image URL'
-                  : 'Search verified CoinMarketCap logos or provide a custom image URL'}
+                  : assetType === 'mutual_fund'
+                    ? 'All funds from the same AMC (fund house) share one logo'
+                    : 'Search verified CoinMarketCap logos or provide a custom image URL'}
               </p>
             </div>
           </div>
@@ -247,7 +249,9 @@ export const LogoPickerModal = ({
                   placeholder={
                     assetType === 'stock'
                       ? 'Search by company name (e.g. Apple) or ticker (e.g. AAPL, RELIANCE.NS)...'
-                      : 'Search by coin name (e.g. LayerZero) or ticker (e.g. ZRO)...'
+                      : assetType === 'mutual_fund'
+                        ? 'Search by fund house (e.g. HDFC, Axis, SBI, Parag Parikh)...'
+                        : 'Search by coin name (e.g. LayerZero) or ticker (e.g. ZRO)...'
                   }
                   className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-[var(--shell-bg)] border border-[var(--card-border)] text-[var(--text-primary)] focus:outline-none focus:border-cyan-500 transition placeholder:text-[var(--text-muted)]"
                   autoFocus
@@ -297,6 +301,10 @@ export const LogoPickerModal = ({
                                 <span className="text-[10px] text-[var(--text-muted)] font-mono">
                                   #{coin.id}
                                 </span>
+                              ) : coin.assetType === 'mutual_fund' ? (
+                                <span className="text-[10px] px-1.5 py-0.2 rounded font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                  AMC
+                                </span>
                               ) : (
                                 <span className="text-[10px] px-1.5 py-0.2 rounded font-medium bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
                                   Stock
@@ -327,7 +335,9 @@ export const LogoPickerModal = ({
                       ? 'Searching database...'
                       : assetType === 'stock'
                         ? 'No matching stocks found.'
-                        : 'No matching cryptocurrencies found.'}
+                        : assetType === 'mutual_fund'
+                          ? 'No matching fund houses found.'
+                          : 'No matching cryptocurrencies found.'}
                   </div>
                 )}
               </div>

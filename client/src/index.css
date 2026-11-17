@@ -997,7 +997,12 @@ html.dark [class*="dark:bg-[#0d121f]"] {
     height: auto !important;
   }
 
-  .r1-holdings-card {
+  .r1-pnl-card {
+    min-height: 310px !important;
+    height: auto !important;
+  }
+
+  .r3-holdings-card {
     height: 380px !important;
   }
 

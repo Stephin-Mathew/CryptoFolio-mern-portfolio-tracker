@@ -48,6 +48,12 @@ const priceFetchLogSchema = new mongoose.Schema(
         success: { type: Boolean, default: false },
         // Error message if fetch failed for this symbol
         error: { type: String, default: null },
+        // HTTP status code or network error code
+        statusCode: { type: Number, default: null },
+        // Extended diagnostic details (HTTP statusText, response body, network syscall)
+        errorDetails: { type: String, default: null },
+        // Target URL that was called
+        url: { type: String, default: null },
         // The ticker mapping info
         mappedFrom: { type: String, default: null },
         mappedTo: { type: String, default: null },
@@ -73,7 +79,6 @@ const priceFetchLogSchema = new mongoose.Schema(
     fetchedAt: {
       type: Date,
       default: Date.now,
-      index: true,
     },
   },
   {

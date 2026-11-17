@@ -15,6 +15,7 @@ import { PriceCache } from '../models/PriceCache.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { searchCmcCoins } from '../utils/cryptoCoinList.js';
 import { searchStocks } from '../utils/stockList.js';
+import { searchAmcs } from '../utils/amcList.js';
 
 const router = express.Router();
 
@@ -197,11 +198,26 @@ router.get('/logo/search', async (req, res) => {
       results = searchStocks(query);
     } else if (assetType === 'crypto') {
       results = searchCmcCoins(query);
+    } else if (assetType === 'mutual_fund') {
+      results = searchAmcs(query).map(amc => ({
+        symbol: amc.slug,
+        name: amc.name,
+        logoUrl: amc.logoUrl,
+        altLogoUrl: amc.altLogoUrl || null,
+        assetType: 'mutual_fund',
+      }));
     } else {
-      // Both: check if query looks like a stock ticker or return blended results
+      // Blended: stocks + crypto + AMCs
       const stockResults = searchStocks(query);
       const cryptoResults = searchCmcCoins(query);
-      results = [...stockResults.slice(0, 15), ...cryptoResults.slice(0, 15)];
+      const amcResults = searchAmcs(query).slice(0, 10).map(amc => ({
+        symbol: amc.slug,
+        name: amc.name,
+        logoUrl: amc.logoUrl,
+        altLogoUrl: amc.altLogoUrl || null,
+        assetType: 'mutual_fund',
+      }));
+      results = [...stockResults.slice(0, 15), ...cryptoResults.slice(0, 15), ...amcResults];
     }
 
     res.json({ results });
