@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { resolveAmcFromText } from '../utils/amcList';
 
 /**
  * CoinMarketCap Verified Static Image ID Map
@@ -213,8 +214,18 @@ export const AssetLogo = ({
     addSource(customUrl);
   }
 
-  // 2. Stock & ETF resolution
-  if (isStock) {
+  // 2. Mutual Fund AMC logo (all funds from same fund house share one logo)
+  const isMutualFund = assetType === 'mutual_fund';
+  if (isMutualFund) {
+    const amc = resolveAmcFromText(symbol);
+    if (amc) {
+      addSource(amc.logoUrl);
+      if (amc.altLogoUrl) addSource(amc.altLogoUrl);
+    }
+  }
+
+  // 3. Stock & ETF resolution
+  if (isStock && !isMutualFund) {
     if (STOCK_LOGO_MAP[upperSymbol]) {
       addSource(STOCK_LOGO_MAP[upperSymbol]);
     }
@@ -235,8 +246,8 @@ export const AssetLogo = ({
     }
   }
 
-  // 3. Automatic CoinMarketCap verified ID Map for crypto
-  if (isCrypto) {
+  // 4. Automatic CoinMarketCap verified ID Map for crypto
+  if (isCrypto && !isMutualFund) {
     const cmcId = CMC_ID_MAP[upperSymbol];
     if (cmcId) {
       addSource(`https://s2.coinmarketcap.com/static/img/coins/64x64/${cmcId}.png`);

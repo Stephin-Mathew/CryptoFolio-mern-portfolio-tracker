@@ -837,7 +837,24 @@ export const DevPriceLogsPage = () => {
                         return (
                           <tr key={idx} style={{ borderBottom: '1px solid var(--divider-2)' }}>
                             <td style={{ padding: '8px 12px' }}>
-                              <StatusDot success={isSuccess} />
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <StatusDot success={isSuccess} />
+                                {item.statusCode && (
+                                  <span
+                                    style={{
+                                      fontSize: 9,
+                                      fontWeight: 700,
+                                      fontFamily: 'monospace',
+                                      padding: '1px 5px',
+                                      borderRadius: 4,
+                                      background: isSuccess ? 'rgba(61, 214, 140, 0.15)' : 'rgba(255, 107, 115, 0.15)',
+                                      color: isSuccess ? 'var(--positive, #3DD68C)' : 'var(--negative, #FF6B73)',
+                                    }}
+                                  >
+                                    {item.statusCode}
+                                  </span>
+                                )}
+                              </div>
                             </td>
 
                             <td style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -859,6 +876,11 @@ export const DevPriceLogsPage = () => {
                                   {item.schemeName && (
                                     <div style={{ fontSize: 10, color: 'var(--text-muted)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                       {item.schemeName}
+                                    </div>
+                                  )}
+                                  {item.error && (
+                                    <div style={{ fontSize: 10, color: 'var(--negative)', display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }} title={item.errorDetails || item.error}>
+                                      <AlertTriangle size={10} /> {item.error}
                                     </div>
                                   )}
                                 </div>
@@ -1300,7 +1322,26 @@ export const DevPriceLogsPage = () => {
                           <tbody>
                             {(log.results || []).map((r, idx) => (
                               <tr key={idx} style={{ borderBottom: '1px solid var(--divider-2)' }}>
-                                <td style={{ padding: '6px 10px' }}><StatusDot success={r.success} /></td>
+                                <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <StatusDot success={r.success} />
+                                    {r.statusCode && (
+                                      <span
+                                        style={{
+                                          fontSize: 9,
+                                          fontWeight: 700,
+                                          fontFamily: 'monospace',
+                                          padding: '1px 5px',
+                                          borderRadius: 4,
+                                          background: r.success ? 'rgba(61, 214, 140, 0.15)' : 'rgba(255, 107, 115, 0.15)',
+                                          color: r.success ? 'var(--positive, #3DD68C)' : 'var(--negative, #FF6B73)',
+                                        }}
+                                      >
+                                        {r.statusCode}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
                                 <td style={{ padding: '6px 10px', fontWeight: 600, color: 'var(--text-primary)' }}>{r.symbol}</td>
                                 <td style={{ padding: '6px 10px' }}><SourceBadge source={r.source} /></td>
                                 <td style={{ padding: '6px 10px' }}>
@@ -1329,8 +1370,40 @@ export const DevPriceLogsPage = () => {
                                   )}
                                 </td>
                                 <td style={{ padding: '6px 10px' }}><ChangeBadge value={r.change24h} /></td>
-                                <td style={{ padding: '6px 10px', fontSize: 10, color: 'var(--negative)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {r.error || ''}
+                                <td style={{ padding: '6px 10px', fontSize: 11, maxWidth: 280 }}>
+                                  {r.error ? (
+                                    <div
+                                      title={r.errorDetails ? `${r.error}\nDetails: ${r.errorDetails}${r.url ? `\nURL: ${r.url}` : ''}` : r.error}
+                                      style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: 2,
+                                        color: 'var(--negative)',
+                                      }}
+                                    >
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        <AlertTriangle size={11} style={{ flexShrink: 0 }} />
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.error}</span>
+                                      </div>
+                                      {r.errorDetails && r.errorDetails !== r.error && (
+                                        <div style={{ fontSize: 9, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>
+                                          {r.errorDetails}
+                                        </div>
+                                      )}
+                                      {r.url && (
+                                        <a
+                                          href={r.url}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          style={{ fontSize: 9, color: '#38BDF8', display: 'inline-flex', alignItems: 'center', gap: 2, textDecoration: 'none' }}
+                                        >
+                                          <ExternalLink size={9} /> View Request URL
+                                        </a>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>—</span>
+                                  )}
                                 </td>
                                 <td style={{ padding: '6px 10px' }}>
                                   <div style={{ display: 'flex', gap: 4 }}>

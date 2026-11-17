@@ -7,6 +7,7 @@ import { PriceCache } from '../models/PriceCache.js';
 import { PriceOverride } from '../models/PriceOverride.js';
 import { PriceFetchLog } from '../models/PriceFetchLog.js';
 import { Holding } from '../models/Holding.js';
+import { resolveAmcFromText } from '../utils/amcList.js';
 
 // Public DNS resolver to bypass ISP crypto DNS blocking (e.g. for pro-api.coinmarketcap.com)
 const publicDnsResolver = new dns.Resolver();
@@ -130,11 +131,11 @@ export const fetchLiveInrRate = async () => {
 
 /**
  * Fetch current price for a single stock/ETF ticker from Yahoo Finance chart API.
- * Returns { price, change24h, change7d, change30d } or null on failure.
+ * Returns enriched quote object on success, or { success: false, statusCode, error, errorDetails, url } on failure.
  */
 const fetchYahooPrice = async (ticker) => {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`;
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`;
     const res = await axios.get(url, {
       params: {
         interval: '1d',
@@ -148,11 +149,28 @@ const fetchYahooPrice = async (ticker) => {
     });
 
     const result = res.data?.chart?.result?.[0];
-    if (!result) return null;
+    if (!result) {
+      const chartErr = res.data?.chart?.error;
+      return {
+        success: false,
+        statusCode: 404,
+        error: chartErr?.description || `No chart data returned for ${ticker}`,
+        errorDetails: JSON.stringify(chartErr || {}),
+        url,
+      };
+    }
 
     const meta = result.meta;
     const currentPrice = meta.regularMarketPrice ?? meta.chartPreviousClose ?? null;
-    if (!currentPrice) return null;
+    if (!currentPrice) {
+      return {
+        success: false,
+        statusCode: 404,
+        error: `No regularMarketPrice found in Yahoo metadata for ${ticker}`,
+        errorDetails: JSON.stringify(meta || {}),
+        url,
+      };
+    }
 
     // previousClose is the last completed trading-day close price
     const prevDayClose = meta.chartPreviousClose ?? meta.previousClose ?? null;
@@ -193,6 +211,9 @@ const fetchYahooPrice = async (ticker) => {
       : `https://financialmodelingprep.com/image-stock/${cleanUpper}.png`;
 
     return {
+      success: true,
+      statusCode: 200,
+      url,
       price: Number(priceInUsd.toFixed(6)),
       prevDayClose: prevDayCloseInUsd !== null ? Number(prevDayCloseInUsd.toFixed(6)) : null,
       priceInr: isINR ? Number(currentPrice) : null,
@@ -205,8 +226,18 @@ const fetchYahooPrice = async (ticker) => {
       logoUrl: defaultLogoUrl,
     };
   } catch (err) {
-    console.warn(`⚠️ Yahoo Finance fetch failed for ${ticker}: ${err.message}`);
-    return null;
+    const statusCode = err.response?.status || (err.code === 'ECONNREFUSED' ? 503 : (err.code === 'ETIMEDOUT' ? 504 : 500));
+    const errorDetails = err.response
+      ? `HTTP ${err.response.status} ${err.response.statusText || ''}: ${typeof err.response.data === 'string' ? err.response.data.slice(0, 250) : JSON.stringify(err.response.data || {})}`
+      : `${err.code || 'NETWORK_ERROR'}: ${err.message}`;
+    console.warn(`⚠️ Yahoo Finance fetch failed for ${ticker} [${statusCode}]: ${err.message}`);
+    return {
+      success: false,
+      statusCode,
+      error: `Yahoo Finance HTTP ${statusCode}: ${err.message}`,
+      errorDetails,
+      url,
+    };
   }
 };
 
@@ -221,19 +252,34 @@ export const fetchYahooStockPrices = async (tickers = []) => {
   // Run up to 5 concurrent requests to be polite to Yahoo's free endpoint
   const CONCURRENCY = 5;
   const results = {};
+  const errors = {};
   for (let i = 0; i < tickers.length; i += CONCURRENCY) {
     const batch = tickers.slice(i, i + CONCURRENCY);
     const settled = await Promise.allSettled(batch.map((t) => fetchYahooPrice(t)));
     settled.forEach((outcome, idx) => {
       const ticker = batch[idx];
-      if (outcome.status === 'fulfilled' && outcome.value) {
-        results[ticker] = outcome.value;
+      if (outcome.status === 'fulfilled') {
+        const val = outcome.value;
+        if (val && val.success !== false && val.price > 0) {
+          results[ticker] = val;
+        } else if (val) {
+          errors[ticker] = val;
+        }
+      } else {
+        errors[ticker] = {
+          success: false,
+          statusCode: 500,
+          error: outcome.reason?.message || 'Yahoo request rejected',
+          errorDetails: String(outcome.reason),
+          url: `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`,
+        };
       }
     });
   }
 
   const fetched = Object.keys(results).length;
   console.log(`✅ Yahoo Finance: fetched ${fetched}/${tickers.length} quote(s).`);
+  Object.defineProperty(results, '_errors', { value: errors, enumerable: false, writable: true });
   return results;
 };
 
@@ -256,14 +302,27 @@ export const isMfSchemeCode = (sym) => /^\d{5,6}$/.test(sym);
 
 /**
  * Fetch the latest NAV for a mutual fund by its MFapi.in numeric scheme code.
- * Returns { price (USD), navInr, schemeName, change24h, change7d, change30d } or null.
+ * Returns enriched quote object on success, or { success: false, statusCode, error, errorDetails, url } on failure.
  *
  * Historical 7d/30d change is computed from the last 30 daily NAV records.
  * MFapi returns data newest-first: data[0] is latest, data[1] is previous day, etc.
  */
 export const fetchMutualFundNav = async (schemeCode) => {
+  const cleanCode = String(schemeCode || '').trim();
+  const url = `https://api.mfapi.in/mf/${encodeURIComponent(cleanCode)}`;
+
+  // Validate that schemeCode is a 5-6 digit numeric code required by MFapi.in
+  if (!/^\d{5,6}$/.test(cleanCode)) {
+    return {
+      success: false,
+      statusCode: 400,
+      error: `Invalid scheme code "${cleanCode}". MFapi requires a 5-6 digit numeric code.`,
+      errorDetails: `Endpoint requires a numeric scheme code (e.g. 120503). Received fund name or invalid identifier.`,
+      url,
+    };
+  }
+
   try {
-    const url = `https://api.mfapi.in/mf/${schemeCode}`;
     const res = await axios.get(url, {
       timeout: 8000,
       headers: { 'Accept': 'application/json' },
@@ -271,8 +330,14 @@ export const fetchMutualFundNav = async (schemeCode) => {
 
     const { status, data: navData, meta } = res.data ?? {};
     if (status !== 'SUCCESS' || !Array.isArray(navData) || navData.length === 0) {
-      console.warn(`⚠️ MFapi: no NAV data for scheme ${schemeCode}`);
-      return null;
+      console.warn(`⚠️ MFapi: no NAV data for scheme ${cleanCode}`);
+      return {
+        success: false,
+        statusCode: 404,
+        error: `No NAV data returned for scheme ${cleanCode}`,
+        errorDetails: `MFapi status: "${status || 'UNKNOWN'}", returned ${Array.isArray(navData) ? navData.length : 0} records.`,
+        url,
+      };
     }
 
     // MFapi dates format: "DD-MM-YYYY", data sorted newest-first
@@ -290,7 +355,15 @@ export const fetchMutualFundNav = async (schemeCode) => {
     // 30 calendar days ≈ ~22 trading days — use index 21 if available
     const nav30d = parseNav(navData[Math.min(21, navData.length - 1)]) ?? latestNav;
 
-    if (!latestNav) return null;
+    if (!latestNav) {
+      return {
+        success: false,
+        statusCode: 422,
+        error: `Could not parse valid NAV number from scheme ${cleanCode}`,
+        errorDetails: `First entry was: ${JSON.stringify(navData[0] || {})}`,
+        url,
+      };
+    }
 
     const change24h = nav1d > 0 ? ((latestNav - nav1d) / nav1d) * 100 : 0;
     const change7d = nav7d > 0 ? ((latestNav - nav7d) / nav7d) * 100 : 0;
@@ -300,18 +373,38 @@ export const fetchMutualFundNav = async (schemeCode) => {
     const inrRate = await fetchLiveInrRate();
     const priceInUsd = inrRate > 0 ? latestNav / inrRate : latestNav;
 
+    // Resolve AMC logo from fund house or scheme name
+    const amc = resolveAmcFromText(meta?.fund_house || meta?.scheme_name || '');
+
     return {
+      success: true,
+      statusCode: 200,
+      url,
       price: Number(priceInUsd.toFixed(6)),
       navInr: Number(latestNav.toFixed(4)),
       schemeName: meta?.scheme_name ?? meta?.fund_house ?? null,
+      fundHouse: meta?.fund_house ?? null,
+      schemeCode: cleanCode,
       change24h: Number(change24h.toFixed(4)),
       change7d: Number(change7d.toFixed(4)),
       change30d: Number(change30d.toFixed(4)),
       assetType: 'mutual_fund',
+      logoUrl: amc?.logoUrl || null,
+      logoSource: amc ? 'amc_registry' : null,
     };
   } catch (err) {
-    console.warn(`⚠️ MFapi fetch failed for scheme ${schemeCode}: ${err.message}`);
-    return null;
+    const statusCode = err.response?.status || (err.code === 'ECONNREFUSED' ? 503 : (err.code === 'ETIMEDOUT' ? 504 : 500));
+    const errorDetails = err.response
+      ? `HTTP ${err.response.status} ${err.response.statusText || ''}: ${typeof err.response.data === 'string' ? err.response.data.slice(0, 250) : JSON.stringify(err.response.data || {})}`
+      : `${err.code || 'NETWORK_ERROR'}: ${err.message}`;
+    console.warn(`⚠️ MFapi fetch failed for scheme ${cleanCode} [${statusCode}]: ${err.message}`);
+    return {
+      success: false,
+      statusCode,
+      error: `MFapi HTTP ${statusCode}: ${err.message}`,
+      errorDetails,
+      url,
+    };
   }
 };
 
@@ -346,19 +439,34 @@ export const fetchMutualFundNavBatch = async (schemeCodes = []) => {
 
   const CONCURRENCY = 5;
   const results = {};
+  const errors = {};
   for (let i = 0; i < schemeCodes.length; i += CONCURRENCY) {
     const batch = schemeCodes.slice(i, i + CONCURRENCY);
     const settled = await Promise.allSettled(batch.map((c) => fetchMutualFundNav(c)));
     settled.forEach((outcome, idx) => {
       const code = batch[idx];
-      if (outcome.status === 'fulfilled' && outcome.value) {
-        results[code] = outcome.value;
+      if (outcome.status === 'fulfilled') {
+        const val = outcome.value;
+        if (val && val.success !== false && val.price > 0) {
+          results[code] = val;
+        } else if (val) {
+          errors[code] = val;
+        }
+      } else {
+        errors[code] = {
+          success: false,
+          statusCode: 500,
+          error: outcome.reason?.message || 'MFapi request rejected',
+          errorDetails: String(outcome.reason),
+          url: `https://api.mfapi.in/mf/${encodeURIComponent(code)}`,
+        };
       }
     });
   }
 
   const fetched = Object.keys(results).length;
   console.log(`✅ MFapi.in: fetched ${fetched}/${schemeCodes.length} NAV(s).`);
+  Object.defineProperty(results, '_errors', { value: errors, enumerable: false, writable: true });
   return results;
 };
 
@@ -886,27 +994,147 @@ export const fetchAndCachePrices = async (symbols = [], triggerType = 'cache_mis
 
   // ── 1. Mutual Funds — MFapi.in ─────────────────────────────────────────────
   if (mfCodes.length > 0) {
-    const mfResults = await fetchMutualFundNavBatch(mfCodes);
-    Object.assign(result, mfResults);
-    mfCodes.forEach((code) => {
-      symbolSourceMap[code] = {
-        source: 'mfapi',
-        success: !!mfResults[code],
-        assetType: 'mutual_fund',
-        mappedTo: code,
-        error: mfResults[code] ? null : 'No NAV data returned',
-      };
+    // For any mutual fund symbol that is not purely numeric (e.g. "AXIS ELSS TAX SAVER FUND..."),
+    // resolve its target scheme code via PriceOverride, Holding, or name search.
+    const resolvedSchemeMap = {}; // originalSym -> numericSchemeCode
+    const unresolvedMfSyms = [];
+
+    // Query PriceOverrides and Holdings for scheme code mappings
+    const [existingOverrides, existingHoldings] = await Promise.all([
+      PriceOverride.find({ symbol: { $in: mfCodes } }).lean().catch(() => []),
+      Holding.find({ symbol: { $in: mfCodes }, mfSchemeCode: { $ne: null } }).lean().catch(() => []),
+    ]);
+
+    const overrideCodeMap = new Map();
+    existingOverrides.forEach((ov) => {
+      if (ov.mappedSymbol && isMfSchemeCode(ov.mappedSymbol)) {
+        overrideCodeMap.set(ov.symbol, ov.mappedSymbol);
+      }
+    });
+
+    const holdingCodeMap = new Map();
+    existingHoldings.forEach((h) => {
+      if (h.mfSchemeCode && isMfSchemeCode(h.mfSchemeCode)) {
+        holdingCodeMap.set(h.symbol, h.mfSchemeCode);
+      }
+    });
+
+    const numericCodesToFetch = new Set();
+
+    for (const sym of mfCodes) {
+      if (isMfSchemeCode(sym)) {
+        resolvedSchemeMap[sym] = sym;
+        numericCodesToFetch.add(sym);
+      } else if (overrideCodeMap.has(sym)) {
+        const code = overrideCodeMap.get(sym);
+        resolvedSchemeMap[sym] = code;
+        numericCodesToFetch.add(code);
+      } else if (holdingCodeMap.has(sym)) {
+        const code = holdingCodeMap.get(sym);
+        resolvedSchemeMap[sym] = code;
+        numericCodesToFetch.add(code);
+      } else {
+        unresolvedMfSyms.push(sym);
+      }
+    }
+
+    // Auto-resolve any remaining mutual fund symbols by searching MFapi
+    if (unresolvedMfSyms.length > 0) {
+      console.log(`🔍 Auto-resolving scheme codes for ${unresolvedMfSyms.length} mutual fund name(s)...`);
+      for (const sym of unresolvedMfSyms) {
+        try {
+          const variantResult = await resolveMutualFundVariants(sym);
+          if (variantResult?.bestMatch?.schemeCode) {
+            const autoCode = String(variantResult.bestMatch.schemeCode);
+            resolvedSchemeMap[sym] = autoCode;
+            numericCodesToFetch.add(autoCode);
+            console.log(`✅ Auto-resolved mutual fund: "${sym}" → Scheme ${autoCode} (${variantResult.bestMatch.schemeName})`);
+          } else {
+            console.warn(`⚠️ Could not auto-resolve scheme code for "${sym}"`);
+          }
+        } catch (autoErr) {
+          console.warn(`Error auto-resolving mutual fund "${sym}":`, autoErr.message);
+        }
+      }
+    }
+
+    const uniqueNumericCodes = [...numericCodesToFetch];
+    const mfResults = await fetchMutualFundNavBatch(uniqueNumericCodes);
+    const mfErrors = mfResults._errors || {};
+
+    // Map fetched NAV quotes back to both numeric code AND original fund name
+    mfCodes.forEach((sym) => {
+      const targetCode = resolvedSchemeMap[sym];
+      const navQuote = targetCode ? mfResults[targetCode] : null;
+      const navError = targetCode ? mfErrors[targetCode] : null;
+
+      if (navQuote) {
+        result[sym] = navQuote;
+        if (targetCode !== sym) {
+          result[targetCode] = navQuote;
+        }
+        symbolSourceMap[sym] = {
+          source: 'mfapi',
+          success: true,
+          statusCode: navQuote.statusCode || 200,
+          assetType: 'mutual_fund',
+          mappedTo: targetCode !== sym ? targetCode : null,
+          url: navQuote.url || `https://api.mfapi.in/mf/${targetCode}`,
+          error: null,
+          errorDetails: null,
+        };
+        if (targetCode && targetCode !== sym) {
+          symbolSourceMap[targetCode] = {
+            source: 'mfapi',
+            success: true,
+            statusCode: navQuote.statusCode || 200,
+            assetType: 'mutual_fund',
+            url: navQuote.url || `https://api.mfapi.in/mf/${targetCode}`,
+            error: null,
+            errorDetails: null,
+          };
+        }
+      } else {
+        const statusCode = navError?.statusCode || (!targetCode ? 400 : 404);
+        const errorReason = navError?.error || (!targetCode
+          ? `Missing numeric scheme code for "${sym}" (MFapi requires a 5-6 digit code)`
+          : `No NAV data returned for scheme ${targetCode}`);
+        const errorDetails = navError?.errorDetails || (!targetCode
+          ? `Fund name "${sym}" cannot be queried directly from MFapi.in. Use 'Map Price' to map to a valid scheme code.`
+          : `HTTP ${statusCode}: Scheme code ${targetCode} returned no valid NAV.`);
+        const attemptedUrl = navError?.url || (targetCode
+          ? `https://api.mfapi.in/mf/${targetCode}`
+          : `https://api.mfapi.in/mf/search?q=${encodeURIComponent(sym)}`);
+
+        symbolSourceMap[sym] = {
+          source: 'mfapi',
+          success: false,
+          statusCode,
+          assetType: 'mutual_fund',
+          mappedTo: targetCode || null,
+          error: errorReason,
+          errorDetails,
+          url: attemptedUrl,
+        };
+      }
     });
   }
 
   // ── 2. Stocks / ETFs — Yahoo Finance ──────────────────────────────────────
   if (stockTicks.length > 0) {
     const yahooResults = await fetchYahooStockPrices(stockTicks);
+    const yahooErrors = yahooResults._errors || {};
     Object.assign(result, yahooResults);
 
     stockTicks.forEach((t) => {
       if (yahooResults[t]) {
-        symbolSourceMap[t] = { source: 'yahoo', success: true, assetType: 'stock' };
+        symbolSourceMap[t] = {
+          source: 'yahoo',
+          success: true,
+          statusCode: yahooResults[t].statusCode || 200,
+          assetType: 'stock',
+          url: yahooResults[t].url || `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}`,
+        };
       }
     });
 
@@ -926,8 +1154,21 @@ export const fetchAndCachePrices = async (symbols = [], triggerType = 'cache_mis
             result[bare] = nsResults[nsTick];
             result[nsTick] = nsResults[nsTick];
             console.log(`✅ Resolved ${bare} → ${nsTick} (NSE auto-probe)`);
-            symbolSourceMap[bare] = { source: 'yahoo', success: true, assetType: 'stock', mappedTo: nsTick };
-            symbolSourceMap[nsTick] = { source: 'yahoo', success: true, assetType: 'stock' };
+            symbolSourceMap[bare] = {
+              source: 'yahoo',
+              success: true,
+              statusCode: nsResults[nsTick].statusCode || 200,
+              assetType: 'stock',
+              mappedTo: nsTick,
+              url: nsResults[nsTick].url,
+            };
+            symbolSourceMap[nsTick] = {
+              source: 'yahoo',
+              success: true,
+              statusCode: nsResults[nsTick].statusCode || 200,
+              assetType: 'stock',
+              url: nsResults[nsTick].url,
+            };
           }
         });
       }
@@ -935,7 +1176,16 @@ export const fetchAndCachePrices = async (symbols = [], triggerType = 'cache_mis
       if (stillMissed.length > 0) {
         console.warn(`⚠️ Yahoo Finance: no data for [${stillMissed.join(', ')}] — using fallback baseline`);
         stillMissed.forEach((t) => {
-          symbolSourceMap[t] = { source: 'yahoo', success: false, assetType: 'stock', error: 'No quote from Yahoo Finance' };
+          const errInfo = yahooErrors[t] || {};
+          symbolSourceMap[t] = {
+            source: 'yahoo',
+            success: false,
+            statusCode: errInfo.statusCode || 404,
+            assetType: 'stock',
+            error: errInfo.error || 'No quote from Yahoo Finance',
+            errorDetails: errInfo.errorDetails || `Yahoo Finance chart endpoint returned no data for ${t}`,
+            url: errInfo.url || `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}`,
+          };
         });
       }
     }
@@ -977,15 +1227,37 @@ export const fetchAndCachePrices = async (symbols = [], triggerType = 'cache_mis
             cmcId: cmcId || null,
             logoUrl: cmcId ? `https://s2.coinmarketcap.com/static/img/coins/64x64/${cmcId}.png` : null,
           };
-          symbolSourceMap[sym] = { source: 'cmc', success: true, assetType: 'crypto', cmcId };
+          symbolSourceMap[sym] = {
+            source: 'cmc',
+            success: true,
+            statusCode: 200,
+            assetType: 'crypto',
+            cmcId,
+            url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest',
+          };
         }
       }
       console.log(`✅ CoinMarketCap: fetched ${Object.keys(result).length}/${cmcSymbols.length} crypto symbol(s).`);
     } catch (err) {
+      const statusCode = err.response?.status || (err.code === 'ECONNREFUSED' ? 503 : 500);
       const errBody = err.response?.data;
-      console.warn(`⚠️ CoinMarketCap API call failed: ${err.message}`);
+      const errorMsg = errBody?.status?.error_message || err.message;
+      const errorDetails = `CMC HTTP ${statusCode}: ${errorMsg}`;
+      console.warn(`⚠️ CoinMarketCap API call failed [${statusCode}]: ${err.message}`);
       if (errBody) console.warn(`   CMC error body: ${JSON.stringify(errBody)}`);
-      console.warn(`   Symbols sent: [${cmcSymbols.join(', ')}]`);
+      cmcSymbols.forEach((s) => {
+        if (!symbolSourceMap[s]) {
+          symbolSourceMap[s] = {
+            source: 'cmc',
+            success: false,
+            statusCode,
+            assetType: 'crypto',
+            error: `CMC error: ${errorMsg}`,
+            errorDetails,
+            url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest',
+          };
+        }
+      });
       console.warn(`   Falling back to CoinGecko...`);
     }
   }
@@ -1021,12 +1293,33 @@ export const fetchAndCachePrices = async (symbols = [], triggerType = 'cache_mis
             change7d: Number(fallback.change7d || 0),
             change30d: Number(fallback.change30d || 0),
           };
-          symbolSourceMap[sym] = { source: 'coingecko', success: true, assetType: 'crypto', mappedTo: geckoId };
+          symbolSourceMap[sym] = {
+            source: 'coingecko',
+            success: true,
+            statusCode: 200,
+            assetType: 'crypto',
+            mappedTo: geckoId,
+            url: 'https://api.coingecko.com/api/v3/simple/price',
+          };
         }
       }
       console.log(`✅ CoinGecko fallback: fetched prices for ${cryptoSymbolsMissed.length} missed symbol(s).`);
     } catch (err) {
-      console.warn(`⚠️ CoinGecko fallback also failed: ${err.message}. Using static baseline prices.`);
+      const statusCode = err.response?.status || 500;
+      console.warn(`⚠️ CoinGecko fallback also failed [${statusCode}]: ${err.message}. Using static baseline prices.`);
+      cryptoSymbolsMissed.forEach((s) => {
+        if (!symbolSourceMap[s] || symbolSourceMap[s].success) {
+          symbolSourceMap[s] = {
+            source: 'coingecko',
+            success: false,
+            statusCode,
+            assetType: 'crypto',
+            error: `CoinGecko error: ${err.message}`,
+            errorDetails: `HTTP ${statusCode}: ${err.message}`,
+            url: 'https://api.coingecko.com/api/v3/simple/price',
+          };
+        }
+      });
     }
   }
 
@@ -1161,7 +1454,10 @@ export const fetchAndCachePrices = async (symbols = [], triggerType = 'cache_mis
         price: entry.price || 0,
         assetType,
         success,
+        statusCode: srcInfo.statusCode || (entry.statusCode ?? (success ? 200 : null)),
         error: srcInfo.error || null,
+        errorDetails: srcInfo.errorDetails || null,
+        url: srcInfo.url || null,
         mappedFrom: srcInfo.mappedFrom || null,
         mappedTo: srcInfo.mappedTo || null,
         logoUrl: entry.logoUrl || null,
