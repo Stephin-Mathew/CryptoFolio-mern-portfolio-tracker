@@ -242,7 +242,7 @@ export function OverviewPage({
           .stats-grid > div:first-child .stat-value { font-size: 26px !important; }
           .r1, .r3 { flex-direction: column !important; gap: 12px !important; }
           .r1 > *, .r3 > * { height: auto !important; }
-          .r1-pnl-card { min-height: 290px !important; height: auto !important; }
+          .r1-pnl-card { min-height: 340px !important; height: auto !important; }
           .r3-holdings-card { height: 380px !important; }
           .r3-wallet-card { height: 340px !important; }
         }

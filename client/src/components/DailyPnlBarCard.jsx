@@ -189,10 +189,10 @@ export function DailyPnlBarCard({ holdings = [], prices = {}, metrics, loading }
     let baseline = 50;
     if (hasPos && !hasNeg) {
       // All positive: anchor baseline near bottom so bars grow up
-      baseline = 8;
+      baseline = 12;
     } else if (!hasPos && hasNeg) {
       // All negative: anchor baseline near top so bars drop down
-      baseline = 92;
+      baseline = 88;
     } else {
       // Both positive and negative values exist: clamp ratio between 25% and 75%
       const rawRatio = neg / (pos + neg);
@@ -257,7 +257,7 @@ export function DailyPnlBarCard({ holdings = [], prices = {}, metrics, loading }
         flexDirection: 'column',
         justifyContent: 'space-between',
         height: '100%',
-        minHeight: 290,
+        minHeight: 330,
         padding: 'clamp(14px, 3.5vw, 20px) clamp(14px, 3.5vw, 20px) 14px',
         boxSizing: 'border-box',
         position: 'relative',
@@ -464,7 +464,7 @@ export function DailyPnlBarCard({ holdings = [], prices = {}, metrics, loading }
         style={{
           flex: 1,
           minHeight: 145,
-          maxHeight: 195,
+          maxHeight: 220,
           position: 'relative',
           display: 'flex',
           flexDirection: 'column',
@@ -477,7 +477,7 @@ export function DailyPnlBarCard({ holdings = [], prices = {}, metrics, loading }
           style={{
             position: 'relative',
             flex: 1,
-            minHeight: 120,
+            minHeight: 130,
             width: '100%',
             display: 'flex',
             alignItems: 'stretch',
@@ -523,15 +523,15 @@ export function DailyPnlBarCard({ holdings = [], prices = {}, metrics, loading }
             // Calculate height percentage relative to baseline
             // Room above baseline: (100 - zeroFromBottomPct)
             // Room below baseline: zeroFromBottomPct
-            let barHeightPct = 8;
+            let barHeightPct = 10;
             if (isPos) {
-              const availableRoom = 100 - zeroFromBottomPct - 6;
-              barHeightPct = maxPos > 0 ? (absVal / maxPos) * availableRoom : 8;
+              const availableRoom = 100 - zeroFromBottomPct - 4;
+              barHeightPct = maxPos > 0 ? (absVal / maxPos) * availableRoom : 10;
             } else {
-              const availableRoom = zeroFromBottomPct - 6;
-              barHeightPct = maxNeg > 0 ? (absVal / maxNeg) * availableRoom : 8;
+              const availableRoom = zeroFromBottomPct - 4;
+              barHeightPct = maxNeg > 0 ? (absVal / maxNeg) * availableRoom : 10;
             }
-            barHeightPct = Math.max(Math.min(barHeightPct, 92), 8);
+            barHeightPct = Math.max(Math.min(barHeightPct, 90), 10);
 
             const barColor = isPos
               ? (isSelected ? posHoverColor : posColor)
