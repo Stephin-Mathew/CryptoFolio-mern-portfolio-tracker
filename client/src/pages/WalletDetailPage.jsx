@@ -604,7 +604,9 @@ export const WalletDetailPage = ({
 
   return (
     <div className="page-container wallet-detail-page">
-      {mainContent}
+      <div style={{ maxWidth: 1100, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {mainContent}
+      </div>
     </div>
   );
 };
