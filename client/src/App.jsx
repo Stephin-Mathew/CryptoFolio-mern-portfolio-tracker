@@ -24,8 +24,8 @@ import { AuthModal } from './components/AuthModal';
 import { LoadingScreen } from './components/LoadingScreen';
 import { sortWalletsByValue } from './utils/walletUtils';
 
-// Routes where the tab bar (Overview | Holdings | Wallets | Dev Logs) is shown
-const TAB_BAR_ROUTES = ['/', '/holdings', '/wallets', '/dev/price-logs'];
+// Routes where the tab bar (Overview | Holdings | Wallets) is shown
+const TAB_BAR_ROUTES = ['/', '/holdings', '/wallets'];
 
 function AppContent() {
   const { isAuthenticated, loading: authLoading } = useAuth();

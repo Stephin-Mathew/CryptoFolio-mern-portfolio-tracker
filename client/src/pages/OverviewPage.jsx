@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
+import LandingPage from '../components/Landing/LandingPage';
 import { useCurrency } from '../context/CurrencyContext';
 import { computePortfolio, compute30dReturn } from '../utils/portfolioMetrics';
 import { useWallets } from '../context/WalletContext';
@@ -86,37 +87,7 @@ export function OverviewPage({
   })();
 
   if (!isAuthenticated) {
-    return (
-      <div style={{ padding: '48px 24px', maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '6px 14px',
-          borderRadius: 20,
-          background: 'var(--neutral-chip-bg)',
-          fontSize: 12,
-          fontWeight: 500,
-          color: 'var(--text-secondary)',
-          marginBottom: 24,
-        }}>
-          <Sparkles size={14} />
-          Multi-Wallet AI Portfolio Tracking
-        </div>
-
-        <h1 style={{ fontSize: 36, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16, lineHeight: 1.2 }}>
-          Track All Your Wallets<br />In One Dashboard
-        </h1>
-
-        <p style={{ fontSize: 15, color: 'var(--text-muted)', marginBottom: 32, lineHeight: 1.6 }}>
-          Manage Binance, Coinbase, Ledger, Robinhood, and custom wallets. Snap a screenshot or add assets manually to track your total portfolio.
-        </p>
-
-        <button className="btn-primary" onClick={onOpenAuthModal} style={{ margin: '0 auto', fontSize: 15 }}>
-          Get Started — Sign In
-        </button>
-      </div>
-    );
+    return <LandingPage onOpenAuthModal={onOpenAuthModal} />;
   }
 
   return (

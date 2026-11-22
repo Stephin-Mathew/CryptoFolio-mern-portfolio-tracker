@@ -378,7 +378,7 @@ export function TopBar({
 }
 
 /**
- * TabBar — Overview | Holdings | Wallets | Dev Logs tabs + currency segmented control.
+ * TabBar — Overview | Holdings | Wallets tabs + currency segmented control.
  * Shown on the main routes.
  */
 export function TabBar({
@@ -399,7 +399,6 @@ export function TabBar({
           { to: '/', label: 'Overview', end: true },
           { to: '/holdings', label: 'Holdings', end: true },
           { to: '/wallets', label: 'Wallets', end: false },
-          { to: '/dev/price-logs', label: 'Dev Logs', end: false },
         ].map(({ to, label, end }) => (
           <NavLink
             key={to}

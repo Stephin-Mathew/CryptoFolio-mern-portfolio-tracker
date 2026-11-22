@@ -1,0 +1,156 @@
+/* ── Landing Design Tokens ──────────────────────────────── */
+:root {
+  --l-bg: #07070C;
+  --l-surface: #0F0F18;
+  --l-surface-2: #15151F;
+  --l-border: rgba(255,255,255,0.07);
+  --l-border-hover: rgba(255,255,255,0.14);
+  --l-text: #F0F0F5;
+  --l-muted: rgba(240,240,245,0.5);
+  --l-caption: rgba(240,240,245,0.35);
+  --l-accent: #6366F1;
+  --l-accent-glow: rgba(99,102,241,0.3);
+  --l-positive: #22C55E;
+  --l-negative: #EF4444;
+  --scroll-pct: 0%;
+}
+
+/* ── Keyframes ─────────────────────────────────────────── */
+@keyframes landing-blob-move-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%       { transform: translate(70px, -50px) scale(1.15); }
+}
+
+@keyframes landing-blob-move-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%       { transform: translate(-50px, 80px) scale(0.85); }
+}
+
+@keyframes landing-blob-move-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%       { transform: translate(40px, 40px) scale(1.1); }
+}
+
+@keyframes landing-word-rise {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes landing-fade-up {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes landing-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes landing-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes landing-pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
+  50%       { box-shadow: 0 0 32px 12px rgba(99, 102, 241, 0); }
+}
+
+@keyframes landing-shimmer {
+  from { background-position: -300% 0; }
+  to   { background-position: 300% 0; }
+}
+
+@keyframes landing-logo-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.12); }
+  50%       { box-shadow: 0 0 0 20px rgba(255, 255, 255, 0); }
+}
+
+@keyframes landing-ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@keyframes landing-draw-line {
+  from { stroke-dashoffset: 1000; }
+  to   { stroke-dashoffset: 0; }
+}
+
+@keyframes loading-spin-ring {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes loading-letter-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes loading-shimmer-bar {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+
+@keyframes loading-logo-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.3); }
+  50%       { box-shadow: 0 0 0 24px rgba(99, 102, 241, 0); }
+}
+
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-12px); }
+}
+
+@keyframes card-entrance {
+  from { opacity: 0; transform: translateY(60px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Utility Classes ──────────────────────────────────── */
+.landing-scroll-reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.65s ease, transform 0.65s ease;
+}
+
+.landing-scroll-reveal.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.landing-scroll-reveal-left {
+  opacity: 0;
+  transform: translateX(-40px);
+  transition: opacity 0.65s ease, transform 0.65s ease;
+}
+
+.landing-scroll-reveal-left.in-view {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.landing-scroll-reveal-right {
+  opacity: 0;
+  transform: translateX(40px);
+  transition: opacity 0.65s ease, transform 0.65s ease;
+}
+
+.landing-scroll-reveal-right.in-view {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.landing-scroll-reveal-scale {
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.65s ease, transform 0.65s ease;
+}
+
+.landing-scroll-reveal-scale.in-view {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.landing-word {
+  display: inline-block;
+  opacity: 0;
+  animation: landing-word-rise 0.5s ease forwards;
+}
