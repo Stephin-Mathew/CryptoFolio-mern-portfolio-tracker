@@ -31,6 +31,7 @@ export function TopBar({
   const { user, isAuthenticated, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const { wallets } = useWallets();
+  const { currency, setCurrency, currencies } = useCurrency();
   const location = useLocation();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -118,6 +119,21 @@ export function TopBar({
 
       {/* Right: actions & user section */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* Currency segmented control */}
+        <div className="seg seg-sm" role="group" aria-label="Display currency" style={{ padding: 2 }}>
+          {currencies.map((c) => (
+            <button
+              key={c}
+              className={`seg-btn${currency === c ? ' active' : ''}`}
+              aria-pressed={currency === c}
+              onClick={() => setCurrency(c)}
+              style={{ padding: '0 8px', minHeight: 28, fontSize: 11 }}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+
         {/* Import with AI & Actions button (Swapped from bottom tab bar) */}
         <div style={{ position: 'relative' }} ref={importRef}>
           <button
@@ -373,62 +389,6 @@ export function TopBar({
             Sign In
           </button>
         )}
-      </div>
-    </div>
-  );
-}
-
-/**
- * TabBar — Overview | Holdings | Wallets tabs + currency segmented control.
- * Shown on the main routes.
- */
-export function TabBar({
-  onOpenUploadModal,
-  onOpenJsonExtractModal,
-  onOpenAddModal,
-  onOpenAddWalletModal,
-  onRefreshPrices,
-  refreshingPrices,
-}) {
-  const { currency, setCurrency, currencies } = useCurrency();
-
-  return (
-    <div className="tab-bar">
-      {/* Tabs */}
-      <div role="tablist" style={{ display: 'flex', overflowX: 'auto', scrollbarWidth: 'none' }}>
-        {[
-          { to: '/', label: 'Overview', end: true },
-          { to: '/holdings', label: 'Holdings', end: true },
-          { to: '/wallets', label: 'Wallets', end: false },
-        ].map(({ to, label, end }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            role="tab"
-            className={({ isActive }) => `nav-tab${isActive ? ' active' : ''}`}
-            aria-current={undefined}
-          >
-            {label}
-          </NavLink>
-        ))}
-      </div>
-
-      {/* Right: currency segmented control */}
-      <div style={{ display: 'flex', gap: 8, padding: '6px 0', alignItems: 'center', flexWrap: 'nowrap' }}>
-        <div className="seg seg-sm" role="group" aria-label="Display currency" style={{ padding: 2 }}>
-          {currencies.map((c) => (
-            <button
-              key={c}
-              className={`seg-btn${currency === c ? ' active' : ''}`}
-              aria-pressed={currency === c}
-              onClick={() => setCurrency(c)}
-              style={{ padding: '0 8px', minHeight: 28, fontSize: 11 }}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   );

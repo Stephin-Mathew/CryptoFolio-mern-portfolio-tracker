@@ -52,8 +52,14 @@ export async function syncTransactionBalances(tx, userId, direction = 'apply') {
     if (isApply) {
       // Spent / sold: deduct amount
       if (fromHolding) {
-        fromHolding.quantity = Math.max(0, (fromHolding.quantity || 0) - amt);
-        await fromHolding.save();
+        const remaining = (fromHolding.quantity || 0) - amt;
+        if (remaining <= 0) {
+          // Position fully closed / sold: delete holding from portfolio
+          await Holding.deleteOne({ _id: fromHolding._id });
+        } else {
+          fromHolding.quantity = remaining;
+          await fromHolding.save();
+        }
       }
     } else {
       // Revert deletion: add amount back
@@ -119,6 +125,7 @@ export async function syncTransactionBalances(tx, userId, direction = 'apply') {
           quantity: amt,
           assetType: inferredType,
           walletId: toWalletId || null,
+          walletOrAccount: (inferredType === 'cash' && wallet) ? wallet.name : '',
           avgBuyPrice: unitPrice && unitPrice > 0 ? unitPrice : null,
           currency: inferredType === 'cash' ? sym : undefined,
         });
@@ -126,8 +133,13 @@ export async function syncTransactionBalances(tx, userId, direction = 'apply') {
     } else {
       // Revert deletion: deduct amount
       if (toHolding) {
-        toHolding.quantity = Math.max(0, (toHolding.quantity || 0) - amt);
-        await toHolding.save();
+        const remaining = (toHolding.quantity || 0) - amt;
+        if (remaining <= 0) {
+          await Holding.deleteOne({ _id: toHolding._id });
+        } else {
+          toHolding.quantity = remaining;
+          await toHolding.save();
+        }
       }
     }
   }

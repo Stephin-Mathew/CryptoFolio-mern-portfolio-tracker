@@ -7,6 +7,7 @@ import { useCurrency } from '../../context/CurrencyContext';
 import { getWalletColor } from '../../utils/assetColors';
 import {
   LayoutGrid,
+  List,
   Wallet,
   BarChart2,
   ArrowRightLeft,
@@ -128,6 +129,18 @@ export function IconRail({
         aria-current={isOverview ? 'page' : undefined}
       >
         <LayoutGrid size={20} strokeWidth={1.6} />
+      </NavLink>
+
+      {/* Nav: Holdings */}
+      <NavLink
+        to="/holdings"
+        end
+        className={({ isActive }) => `rib${isActive ? ' active' : ''}`}
+        title="Holdings"
+        aria-label="Holdings"
+        aria-current={isHoldings ? 'page' : undefined}
+      >
+        <List size={20} strokeWidth={1.6} />
       </NavLink>
 
       {/* Nav: Wallets */}
@@ -498,8 +511,33 @@ export function ExpandedSidebar({
         borderRight: '1px solid var(--divider-1)',
       }}
     >
+      {/* Quick link: All Holdings */}
+      <div style={{ padding: '12px 10px 8px' }}>
+        <NavLink
+          to="/holdings"
+          style={({ isActive }) => ({
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '7px 10px',
+            borderRadius: 10,
+            textDecoration: 'none',
+            background: isActive ? 'var(--card-bg)' : 'transparent',
+            marginBottom: 2,
+            transition: 'all 0.15s ease',
+            border: isActive ? '1px solid var(--card-border)' : '1px solid transparent',
+            color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+            fontSize: 13,
+            fontWeight: isActive ? 600 : 400,
+          })}
+        >
+          <List size={16} />
+          <span>All Holdings</span>
+        </NavLink>
+      </div>
+
       {/* Header */}
-      <div style={{ padding: '0 16px 12px', borderBottom: '1px solid var(--divider-1)' }}>
+      <div style={{ padding: '8px 16px 12px', borderBottom: '1px solid var(--divider-1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 11, letterSpacing: '.6px', textTransform: 'uppercase', color: 'var(--text-caption)', fontWeight: 500 }}>
             Your Wallets
