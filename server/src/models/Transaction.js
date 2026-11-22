@@ -19,13 +19,15 @@ const transactionSchema = new mongoose.Schema(
       required: true,
     },
     // "From" leg — what you gave up
-    fromAsset:    { type: String, trim: true, default: '' },
-    fromAmount:   { type: Number, default: null },
-    fromWalletId: { type: mongoose.Schema.Types.ObjectId, ref: 'Wallet', default: null },
+    fromAsset:     { type: String, trim: true, default: '' },
+    fromAmount:    { type: Number, default: null },
+    fromWalletId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Wallet', default: null },
+    fromHoldingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Holding', default: null },
     // "To" leg — what you received
-    toAsset:    { type: String, trim: true, default: '' },
-    toAmount:   { type: Number, default: null },
-    toWalletId: { type: mongoose.Schema.Types.ObjectId, ref: 'Wallet', default: null },
+    toAsset:     { type: String, trim: true, default: '' },
+    toAmount:    { type: Number, default: null },
+    toWalletId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Wallet', default: null },
+    toHoldingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Holding', default: null },
     // Convenience / analytics
     priceUSD:  { type: Number, default: null },
     valueUSD:  { type: Number, default: null },

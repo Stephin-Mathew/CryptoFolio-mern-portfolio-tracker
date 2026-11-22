@@ -53,8 +53,9 @@ export const PortfolioSummary = ({ holdings = [], prices = {}, loading, onCurren
     const entry = prices[h.symbol];
 
     const isINR =
-      h.assetType === 'mutual_fund' ||
+      h.symbol === 'INR' ||
       h.currency === 'INR' ||
+      h.assetType === 'mutual_fund' ||
       entry?.currency === 'INR' ||
       (entry?.priceInr != null && entry.priceInr > 0) ||
       (entry?.navInr != null && entry.navInr > 0) ||
@@ -62,7 +63,7 @@ export const PortfolioSummary = ({ holdings = [], prices = {}, loading, onCurren
       h.symbol?.endsWith('.BO');
 
     if (h.assetType === 'cash') {
-      p = 1;
+      p = isINR && inrRate > 0 ? 1 / inrRate : 1;
     } else if (entry) {
       if (typeof entry === 'object') {
         p = Number(entry.price || 0);

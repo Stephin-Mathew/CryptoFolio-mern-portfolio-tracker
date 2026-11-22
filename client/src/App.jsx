@@ -5,7 +5,7 @@ import { WalletProvider, useWallets } from './context/WalletContext';
 import { CurrencyProvider } from './context/CurrencyContext';
 import api, { waitForTokenProvider } from './api/axiosInstance';
 import { IconRail, ExpandedSidebar } from './components/AppShell/IconRail';
-import { TopBar, TabBar } from './components/AppShell/TopBar';
+import { TopBar } from './components/AppShell/TopBar';
 import { BottomTabBar } from './components/AppShell/BottomTabBar';
 import { OverviewPage } from './pages/OverviewPage';
 import { HoldingsPage } from './pages/HoldingsPage';
@@ -25,8 +25,6 @@ import { AuthModal } from './components/AuthModal';
 import { LoadingScreen } from './components/LoadingScreen';
 import { sortWalletsByValue } from './utils/walletUtils';
 
-// Routes where the tab bar (Overview | Holdings | Wallets) is shown
-const TAB_BAR_ROUTES = ['/', '/holdings', '/wallets', '/transactions'];
 
 function AppContent() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -376,7 +374,6 @@ function AppContent() {
     return <LoadingScreen />;
   }
 
-  const isTabBarRoute = TAB_BAR_ROUTES.includes(location.pathname) || location.pathname === '/holdings' || location.pathname === '/transactions';
   const showRail = isAuthenticated;
 
   return (
@@ -415,11 +412,8 @@ function AppContent() {
               <IconRail
                 isSidebarCollapsed={isSidebarCollapsed}
                 onToggleCollapse={handleToggleSidebarCollapse}
-                onOpenUploadModal={openUploadModal}
-                onOpenAddModal={openAddHoldingModal}
-                onOpenAddWalletModal={openAddWalletModal}
-                onOpenJsonExtractModal={openJsonExtractModal}
                 onRefreshPrices={handleRefreshPrices}
+                refreshingPrices={refreshingPrices}
               />
               {!isSidebarCollapsed && (
                 <ExpandedSidebar
@@ -438,25 +432,7 @@ function AppContent() {
             <TopBar
               activeWalletName={activeWallet?.name}
               onOpenAuthModal={() => setIsAuthModalOpen(true)}
-              onOpenUploadModal={openUploadModal}
-              onOpenJsonExtractModal={openJsonExtractModal}
-              onOpenAddModal={openAddHoldingModal}
-              onOpenAddWalletModal={openAddWalletModal}
-              onRefreshPrices={handleRefreshPrices}
-              refreshingPrices={refreshingPrices}
             />
-
-            {/* Tab bar (main routes only, authenticated) */}
-            {isAuthenticated && isTabBarRoute && (
-              <TabBar
-                onOpenUploadModal={openUploadModal}
-                onOpenJsonExtractModal={openJsonExtractModal}
-                onOpenAddModal={openAddHoldingModal}
-                onOpenAddWalletModal={openAddWalletModal}
-                onRefreshPrices={handleRefreshPrices}
-                refreshingPrices={refreshingPrices}
-              />
-            )}
 
             {/* Page content */}
             <div className="page-content" style={{ flex: 1, overflowY: 'auto' }}>
@@ -557,6 +533,8 @@ function AppContent() {
                         onDeleteHolding={promptDeleteHolding}
                         onEditClick={(holding) => { setHoldingToEdit(holding); setTargetWalletId(holding.walletId || ''); setIsFormModalOpen(true); }}
                         onOpenAddModalWithWallet={(wId) => { setHoldingToEdit(null); setTargetWalletId(wId); setIsFormModalOpen(true); }}
+                        onOpenUploadModal={(wId) => { setTargetWalletId(wId || activeWalletId); setIsUploadModalOpen(true); }}
+                        onOpenJsonExtractModal={(wId) => { setTargetWalletId(wId || activeWalletId); setIsJsonExtractModalOpen(true); }}
                         onOpenEditWallet={(w) => { setWalletToEdit(w); setIsWalletModalOpen(true); }}
                         onDeleteWallet={promptDeleteWallet}
                         onClearWalletHoldings={promptClearWalletHoldings}
@@ -580,6 +558,8 @@ function AppContent() {
                   element={
                     <TransactionsPage
                       showToast={showToast}
+                      holdings={holdings}
+                      prices={prices}
                       onTransactionChange={() => {
                         fetchPortfolioData().catch(() => {});
                         fetchWallets().catch(() => {});
@@ -594,13 +574,7 @@ function AppContent() {
 
         {/* Mobile bottom tab bar */}
         {isAuthenticated && (
-          <BottomTabBar
-            onOpenUploadModal={openUploadModal}
-            onOpenJsonExtractModal={openJsonExtractModal}
-            onOpenAddModal={openAddHoldingModal}
-            onOpenAddWalletModal={openAddWalletModal}
-            onRefreshPrices={handleRefreshPrices}
-          />
+          <BottomTabBar />
         )}
 
         {/* Modals */}

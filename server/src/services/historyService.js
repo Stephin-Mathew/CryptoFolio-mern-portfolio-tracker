@@ -29,8 +29,9 @@ export const captureUserSnapshot = async (userId) => {
       let price = 0;
       const entry = prices[h.symbol];
       const isINR =
-        h.assetType === 'mutual_fund' ||
+        h.symbol === 'INR' ||
         h.currency === 'INR' ||
+        h.assetType === 'mutual_fund' ||
         entry?.currency === 'INR' ||
         (entry?.priceInr != null && entry.priceInr > 0) ||
         (entry?.navInr != null && entry.navInr > 0) ||
@@ -38,7 +39,7 @@ export const captureUserSnapshot = async (userId) => {
         h.symbol?.endsWith('.BO');
 
       if (h.assetType === 'cash') {
-        price = 1;
+        price = isINR && inrRate > 0 ? 1 / inrRate : 1;
       } else if (entry !== undefined) {
         price = typeof entry === 'object' ? Number(entry.price || 0) : Number(entry || 0);
       } else {
@@ -140,16 +141,18 @@ export const getPortfolioHistory = async (userId, timeframe = '30d') => {
     let p = 0;
     const entry = prices[h.symbol];
     const isINR =
-      h.assetType === 'mutual_fund' ||
+      h.symbol === 'INR' ||
       h.currency === 'INR' ||
+      h.assetType === 'mutual_fund' ||
       entry?.currency === 'INR' ||
       (entry?.priceInr != null && entry.priceInr > 0) ||
       (entry?.navInr != null && entry.navInr > 0) ||
       h.symbol?.endsWith('.NS') ||
       h.symbol?.endsWith('.BO');
 
-    if (h.assetType === 'cash') p = 1;
-    else if (entry !== undefined) {
+    if (h.assetType === 'cash') {
+      p = isINR && inrRate > 0 ? 1 / inrRate : 1;
+    } else if (entry !== undefined) {
       p = typeof entry === 'object' ? Number(entry.price || 0) : Number(entry || 0);
     } else {
       p = isINR && inrRate > 0 ? (Number(h.avgBuyPrice) || 0) / inrRate : (Number(h.avgBuyPrice) || 0);
@@ -170,17 +173,26 @@ export const getPortfolioHistory = async (userId, timeframe = '30d') => {
   let dataPoints = [];
 
   if (dbSnapshots.length > 0) {
-    // Use real DB snapshots only — no synthetic data
-    dataPoints = dbSnapshots.map((s) => ({
-      timestamp: s.timestamp,
-      totalValue: s.totalValue,
-      totalCost: s.totalCost,
-      totalPnL: s.totalPnL,
-      cryptoValue: s.breakdown?.crypto || 0,
-      stockValue: s.breakdown?.stock || 0,
-      mutualFundValue: s.breakdown?.mutual_fund || 0,
-      cashValue: s.breakdown?.cash || 0,
-    }));
+    // Use real DB snapshots only — auto-heal historical snapshots where raw INR cash was stored 1:1
+    dataPoints = dbSnapshots.map((s) => {
+      let snapTotal = s.totalValue;
+      let snapCash = s.breakdown?.cash || 0;
+      if (snapCash > 1000 && inrRate > 0) {
+        const adjustedCash = snapCash / inrRate;
+        snapTotal = snapTotal - snapCash + adjustedCash;
+        snapCash = adjustedCash;
+      }
+      return {
+        timestamp: s.timestamp,
+        totalValue: Number(snapTotal.toFixed(2)),
+        totalCost: s.totalCost,
+        totalPnL: Number((snapTotal - s.totalCost).toFixed(2)),
+        cryptoValue: s.breakdown?.crypto || 0,
+        stockValue: s.breakdown?.stock || 0,
+        mutualFundValue: s.breakdown?.mutual_fund || 0,
+        cashValue: Number(snapCash.toFixed(2)),
+      };
+    });
 
     // Anchor latest point strictly to live holdings valuation
     const last = dataPoints[dataPoints.length - 1];

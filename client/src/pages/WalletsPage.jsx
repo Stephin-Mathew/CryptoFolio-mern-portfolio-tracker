@@ -67,6 +67,7 @@ export const WalletsPage = ({
       const entry = prices[h.symbol];
 
       const isINR =
+        h.symbol === 'INR' ||
         h.assetType === 'mutual_fund' ||
         h.currency === 'INR' ||
         entry?.currency === 'INR' ||
@@ -76,7 +77,7 @@ export const WalletsPage = ({
         h.symbol?.endsWith('.BO');
 
       if (h.assetType === 'cash') {
-        currentPrice = 1;
+        currentPrice = isINR && inrRate > 0 ? 1 / inrRate : 1;
       } else if (entry !== undefined) {
         if (typeof entry === 'object') {
           currentPrice = Number(entry.price || 0);

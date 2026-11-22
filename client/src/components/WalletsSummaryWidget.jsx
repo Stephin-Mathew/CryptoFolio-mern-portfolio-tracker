@@ -25,6 +25,7 @@ export const WalletsSummaryWidget = ({ holdings, prices, onOpenAddWallet, displa
         let currentPrice = 0;
         const entry = prices[h.symbol];
         const isINR =
+          h.symbol === 'INR' ||
           h.assetType === 'mutual_fund' ||
           h.currency === 'INR' ||
           entry?.currency === 'INR' ||
@@ -34,7 +35,7 @@ export const WalletsSummaryWidget = ({ holdings, prices, onOpenAddWallet, displa
           h.symbol?.endsWith('.BO');
 
         if (h.assetType === 'cash') {
-          currentPrice = 1;
+          currentPrice = isINR && inrRate > 0 ? 1 / inrRate : 1;
         } else if (entry !== undefined) {
           currentPrice = typeof entry === 'object' ? Number(entry.price || 0) : Number(entry || 0);
         } else {
@@ -52,6 +53,7 @@ export const WalletsSummaryWidget = ({ holdings, prices, onOpenAddWallet, displa
     let currentPrice = 0;
     const entry = prices[h.symbol];
     const isINR =
+      h.symbol === 'INR' ||
       h.assetType === 'mutual_fund' ||
       h.currency === 'INR' ||
       entry?.currency === 'INR' ||
@@ -61,7 +63,7 @@ export const WalletsSummaryWidget = ({ holdings, prices, onOpenAddWallet, displa
       h.symbol?.endsWith('.BO');
 
     if (h.assetType === 'cash') {
-      currentPrice = 1;
+      currentPrice = isINR && inrRate > 0 ? 1 / inrRate : 1;
     } else if (entry !== undefined) {
       currentPrice = typeof entry === 'object' ? Number(entry.price || 0) : Number(entry || 0);
     } else {

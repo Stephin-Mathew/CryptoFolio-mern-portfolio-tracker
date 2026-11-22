@@ -26,7 +26,12 @@ export async function syncTransactionBalances(tx, userId, direction = 'apply') {
   if (!tx || !userId) return;
 
   const isApply = direction === 'apply';
-  const { type, fromAsset, fromAmount, fromWalletId, toAsset, toAmount, toWalletId, priceUSD, valueUSD } = tx;
+  const {
+    type,
+    fromAsset, fromAmount, fromWalletId, fromHoldingId,
+    toAsset, toAmount, toWalletId, toHoldingId,
+    priceUSD, valueUSD,
+  } = tx;
 
   // Derive per-unit price if available
   let unitPrice = priceUSD;
@@ -39,10 +44,16 @@ export async function syncTransactionBalances(tx, userId, direction = 'apply') {
     const sym = fromAsset.toUpperCase().trim();
     const amt = Number(fromAmount);
 
-    const fromQuery = { userId, symbol: sym };
-    if (fromWalletId) fromQuery.walletId = fromWalletId;
+    let fromHolding = null;
+    if (fromHoldingId) {
+      fromHolding = await Holding.findOne({ _id: fromHoldingId, userId });
+    }
 
-    let fromHolding = await Holding.findOne(fromQuery);
+    if (!fromHolding) {
+      const fromQuery = { userId, symbol: sym };
+      if (fromWalletId) fromQuery.walletId = fromWalletId;
+      fromHolding = await Holding.findOne(fromQuery);
+    }
 
     // If not found with walletId, fallback to any holding of this symbol
     if (!fromHolding && fromWalletId) {
@@ -52,8 +63,14 @@ export async function syncTransactionBalances(tx, userId, direction = 'apply') {
     if (isApply) {
       // Spent / sold: deduct amount
       if (fromHolding) {
-        fromHolding.quantity = Math.max(0, (fromHolding.quantity || 0) - amt);
-        await fromHolding.save();
+        const remaining = (fromHolding.quantity || 0) - amt;
+        if (remaining <= 0) {
+          // Position fully closed / sold: delete holding from portfolio
+          await Holding.deleteOne({ _id: fromHolding._id });
+        } else {
+          fromHolding.quantity = remaining;
+          await fromHolding.save();
+        }
       }
     } else {
       // Revert deletion: add amount back
@@ -80,10 +97,16 @@ export async function syncTransactionBalances(tx, userId, direction = 'apply') {
     const sym = toAsset.toUpperCase().trim();
     const amt = Number(toAmount);
 
-    const toQuery = { userId, symbol: sym };
-    if (toWalletId) toQuery.walletId = toWalletId;
+    let toHolding = null;
+    if (toHoldingId) {
+      toHolding = await Holding.findOne({ _id: toHoldingId, userId });
+    }
 
-    let toHolding = await Holding.findOne(toQuery);
+    if (!toHolding) {
+      const toQuery = { userId, symbol: sym };
+      if (toWalletId) toQuery.walletId = toWalletId;
+      toHolding = await Holding.findOne(toQuery);
+    }
 
     // If not found with walletId, fallback to any holding of this symbol
     if (!toHolding && toWalletId) {
@@ -119,6 +142,7 @@ export async function syncTransactionBalances(tx, userId, direction = 'apply') {
           quantity: amt,
           assetType: inferredType,
           walletId: toWalletId || null,
+          walletOrAccount: (inferredType === 'cash' && wallet) ? wallet.name : '',
           avgBuyPrice: unitPrice && unitPrice > 0 ? unitPrice : null,
           currency: inferredType === 'cash' ? sym : undefined,
         });
@@ -126,8 +150,13 @@ export async function syncTransactionBalances(tx, userId, direction = 'apply') {
     } else {
       // Revert deletion: deduct amount
       if (toHolding) {
-        toHolding.quantity = Math.max(0, (toHolding.quantity || 0) - amt);
-        await toHolding.save();
+        const remaining = (toHolding.quantity || 0) - amt;
+        if (remaining <= 0) {
+          await Holding.deleteOne({ _id: toHolding._id });
+        } else {
+          toHolding.quantity = remaining;
+          await toHolding.save();
+        }
       }
     }
   }

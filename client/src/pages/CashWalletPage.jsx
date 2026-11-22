@@ -404,25 +404,31 @@ export const CashWalletPage = ({
 
   if (walletsLoading) {
     return (
-      <div className="space-y-6 py-6">
-        <div className="h-48 glass-card rounded-3xl shimmer" />
-        <div className="h-64 glass-card rounded-3xl shimmer" />
+      <div className="page-container cash-wallet-page">
+        <div style={{ maxWidth: 1100, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="card shimmer" style={{ height: 130 }} />
+          <div className="card shimmer" style={{ height: 260 }} />
+        </div>
       </div>
     );
   }
 
   if (!wallet) {
     return (
-      <div className="py-12 text-center glass-card rounded-3xl my-6 border dark:border-slate-800 border-slate-200">
-        <div className="w-16 h-16 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto mb-4">
-          <Wallet className="w-8 h-8" />
+      <div className="page-container cash-wallet-page">
+        <div style={{ maxWidth: 1100, width: '100%', margin: '0 auto' }}>
+          <div className="card" style={{ textAlign: 'center', padding: '48px 24px', maxWidth: 480, margin: '0 auto' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'var(--negative-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+              <Wallet size={22} color="var(--negative)" />
+            </div>
+            <h3 style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Wallet Not Found</h3>
+            <p style={{ margin: '0 0 18px', fontSize: 13, color: 'var(--text-muted)' }}>The requested wallet does not exist or has been deleted.</p>
+            <Link to="/wallets" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', textDecoration: 'none' }}>
+              <ArrowLeft size={14} />
+              Back to Wallets
+            </Link>
+          </div>
         </div>
-        <h3 className="text-xl font-bold dark:text-white text-slate-900 mb-2">Wallet Not Found</h3>
-        <p className="dark:text-slate-400 text-slate-600 text-sm mb-6">The requested wallet does not exist or has been deleted.</p>
-        <Link to="/wallets" className="px-6 py-3 rounded-2xl dark:bg-slate-800 bg-slate-100 dark:hover:bg-slate-700 hover:bg-slate-200 dark:text-white text-slate-900 font-bold text-xs inline-flex items-center space-x-2 transition border dark:border-slate-700 border-slate-300">
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to All Wallets</span>
-        </Link>
       </div>
     );
   }
@@ -430,242 +436,362 @@ export const CashWalletPage = ({
   const accentColor = wallet.color || '#10b981';
 
   return (
-    <div className="space-y-6 py-4">
-      {/* Breadcrumb nav */}
-      <div className="flex items-center justify-between">
-        <Link to="/wallets" className="inline-flex items-center space-x-2 text-xs font-semibold dark:text-slate-400 text-slate-600 dark:hover:text-emerald-400 hover:text-emerald-600 transition">
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Wallets</span>
-        </Link>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => onOpenEditWallet && onOpenEditWallet(wallet)}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl dark:bg-slate-800 bg-slate-100 dark:hover:bg-slate-700 hover:bg-slate-200 border dark:border-slate-700 border-slate-300 dark:text-slate-200 text-slate-800 text-xs font-semibold transition cursor-pointer shadow-xs"
-          >
-            <Edit2 className="w-3.5 h-3.5" />
-            <span>Edit Wallet</span>
-          </button>
-          <button
-            onClick={handleDeleteWallet}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 dark:text-red-400 text-xs font-semibold transition cursor-pointer shadow-xs"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Delete</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Hero Banner */}
-      <div className="glass-card rounded-3xl p-6 sm:p-8 relative overflow-hidden border dark:border-slate-800 border-slate-200 shadow-md">
-        <div className="absolute top-0 left-0 right-0 h-2 rounded-t-3xl" style={{ backgroundColor: accentColor }} />
-        <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full blur-3xl opacity-20 pointer-events-none" style={{ backgroundColor: accentColor }} />
-
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative">
-          <div className="flex items-start space-x-4">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center border shadow-xl shrink-0" style={{ backgroundColor: `${accentColor}25`, borderColor: `${accentColor}50` }}>
-              <IndianRupee className="w-7 h-7" style={{ color: accentColor }} />
-            </div>
-            <div>
-              <div className="flex items-center space-x-3 mb-1">
-                <h1 className="text-2xl sm:text-3xl font-extrabold dark:text-white text-slate-900 font-heading tracking-tight">
-                  {wallet.name}
-                </h1>
-                <span
-                  className="px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider border"
-                  style={{ backgroundColor: `${accentColor}15`, borderColor: `${accentColor}35`, color: accentColor }}
-                >
-                  Cash · INR
-                </span>
-              </div>
-              <p className="dark:text-slate-400 text-slate-600 text-xs sm:text-sm">
-                {wallet.description || 'Track your INR cash across different locations'}
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={openAdd}
-            className="flex items-center justify-center space-x-2 px-6 py-3.5 rounded-2xl font-extrabold text-sm shadow-lg transition cursor-pointer shrink-0 text-white"
-            style={{ background: `linear-gradient(135deg, ${accentColor}, #059669)`, boxShadow: `0 4px 20px ${accentColor}40` }}
-          >
-            <Plus className="w-5 h-5" />
-            <span>Add Cash Balance</span>
-          </button>
-        </div>
-
-        {/* Stats grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 pt-6 border-t dark:border-slate-800/80 border-slate-200">
-          <div>
-            <span className="text-xs dark:text-slate-400 text-slate-500 uppercase font-semibold">Total Cash</span>
-            <div className="text-2xl sm:text-3xl font-extrabold dark:text-white text-slate-900 font-heading mt-1">
-              {fmt(totalINR)}
-            </div>
-            <span className="text-[11px] dark:text-slate-400 text-slate-500">
-              Across {cashHoldings.length} entr{cashHoldings.length === 1 ? 'y' : 'ies'}
-            </span>
-          </div>
-          <div>
-            <span className="text-xs dark:text-slate-400 text-slate-500 uppercase font-semibold">Locations Tracked</span>
-            <div className="text-2xl sm:text-3xl font-extrabold dark:text-white text-slate-900 font-heading mt-1">
-              {Object.keys(grouped).length}
-            </div>
-            <span className="text-[11px] dark:text-slate-400 text-slate-500">Distinct storage locations</span>
-          </div>
-          <div>
-            <span className="text-xs dark:text-slate-400 text-slate-500 uppercase font-semibold">Currency</span>
-            <div className="text-2xl sm:text-3xl font-extrabold mt-1 font-heading" style={{ color: accentColor }}>
-              INR ₹
-            </div>
-            <span className="text-[11px] dark:text-slate-400 text-slate-500">Indian Rupee only</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Location Breakdown */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold dark:text-white text-slate-900 font-heading flex items-center space-x-2">
-            <Banknote className="w-5 h-5 text-emerald-500" />
-            <span>Cash by Location</span>
-            <span className="text-xs px-2 py-0.5 rounded-full dark:bg-slate-800 bg-slate-200 dark:text-slate-400 text-slate-700 font-mono font-bold">
-              {cashHoldings.length}
-            </span>
-          </h2>
-          {cashHoldings.length > 0 && onClearWalletHoldings && (
-            <button
-              onClick={() => onClearWalletHoldings(wallet, cashHoldings.length)}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold transition cursor-pointer shadow-xs"
+    <div className="page-container cash-wallet-page">
+      <div style={{ maxWidth: 1100, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Top bar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Link
+              to="/wallets"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '5px 11px', borderRadius: 8,
+                border: '1px solid var(--card-border)', background: 'var(--card-bg)',
+                fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)',
+                textDecoration: 'none', transition: 'color 0.15s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
             >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Clear All</span>
+              <ArrowLeft size={13} />
+              Back to Wallets
+            </Link>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button
+              onClick={() => onOpenEditWallet && onOpenEditWallet(wallet)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '5px 11px', borderRadius: 8,
+                border: '1px solid var(--card-border)', background: 'var(--card-bg)',
+                fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)',
+                cursor: 'pointer', transition: 'color 0.15s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
+            >
+              <Edit2 size={12} />
+              Edit Wallet
             </button>
+            <button
+              onClick={handleDeleteWallet}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '5px 11px', borderRadius: 8,
+                border: '1px solid var(--negative-bg)', background: 'var(--negative-bg)',
+                fontSize: 12, fontWeight: 500, color: 'var(--negative)',
+                cursor: 'pointer',
+              }}
+            >
+              <Trash2 size={12} />
+              Delete
+            </button>
+          </div>
+        </div>
+
+        {/* Hero Card */}
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ height: 3, background: accentColor }} />
+
+          {/* Row 1 — Identity + Add Action */}
+          <div
+            style={{
+              padding: '16px 20px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 12, flexWrap: 'wrap',
+              borderBottom: '1px solid var(--divider-2)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div
+                style={{
+                  width: 48, height: 48, borderRadius: 14,
+                  background: `${accentColor}1a`,
+                  border: `1.5px solid ${accentColor}44`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: `0 2px 12px ${accentColor}18`,
+                }}
+              >
+                <IndianRupee size={22} style={{ color: accentColor }} />
+              </div>
+
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.4px', lineHeight: 1.2 }}>
+                  {wallet.name}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 4, flexWrap: 'wrap' }}>
+                  <span className="chip chip-neutral" style={{ fontSize: 10, padding: '2px 7px', textTransform: 'uppercase', letterSpacing: '.4px' }}>
+                    Cash · INR
+                  </span>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    {wallet.description || 'Track your INR cash across different locations'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              className="btn-primary"
+              onClick={openAdd}
+              style={{ minHeight: 36, padding: '0 14px', fontSize: 12, fontWeight: 600, gap: 6, borderRadius: 10, cursor: 'pointer' }}
+            >
+              <Plus size={15} strokeWidth={2} />
+              <span>Add Cash Balance</span>
+            </button>
+          </div>
+
+          {/* Row 2 — Stats strip */}
+          <div style={{ display: 'flex', alignItems: 'stretch', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 180px', padding: '14px 20px', borderRight: '1px solid var(--divider-2)' }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>Total Cash</span>
+                <IndianRupee size={12} style={{ opacity: 0.5 }} />
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.6px', lineHeight: 1.1 }}>
+                {fmt(totalINR)}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                Across {cashHoldings.length} entr{cashHoldings.length === 1 ? 'y' : 'ies'}
+              </div>
+            </div>
+
+            <div style={{ flex: '1 1 180px', padding: '14px 20px', borderRight: '1px solid var(--divider-2)' }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>Locations Tracked</span>
+                <Banknote size={12} style={{ opacity: 0.5 }} />
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.6px', lineHeight: 1.1 }}>
+                {Object.keys(grouped).length}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                Distinct storage location{Object.keys(grouped).length !== 1 ? 's' : ''}
+              </div>
+            </div>
+
+            <div style={{ flex: '1 1 180px', padding: '14px 20px' }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>
+                <span>Currency</span>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: accentColor, letterSpacing: '-0.4px', lineHeight: 1.1 }}>
+                INR ₹
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                Indian Rupee only
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Location Breakdown */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                Cash by Location
+              </h2>
+              <span className="chip chip-neutral" style={{ fontSize: 11, padding: '1px 7px', fontWeight: 600 }}>
+                {cashHoldings.length}
+              </span>
+            </div>
+            {cashHoldings.length > 0 && onClearWalletHoldings && (
+              <button
+                onClick={() => onClearWalletHoldings(wallet, cashHoldings.length)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '4px 9px', borderRadius: 7,
+                  border: '1px solid var(--negative-bg)', background: 'var(--negative-bg)',
+                  fontSize: 11, fontWeight: 500, color: 'var(--negative)',
+                  cursor: 'pointer',
+                }}
+              >
+                <Trash2 size={11} />
+                Clear All
+              </button>
+            )}
+          </div>
+
+          {cashHoldings.length === 0 ? (
+            <div className="card" style={{ padding: '40px 24px', textAlign: 'center' }}>
+              <div
+                style={{
+                  width: 48, height: 48, borderRadius: 14,
+                  background: `${accentColor}18`, border: `1.5px solid ${accentColor}33`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 12px',
+                }}
+              >
+                <IndianRupee size={22} style={{ color: accentColor }} />
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
+                No Cash Added Yet
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 400, margin: '0 auto 16px' }}>
+                Start tracking your INR cash by adding where you keep it — your purse, Google Pay, savings account, and more.
+              </div>
+              <button
+                className="btn-primary"
+                onClick={openAdd}
+                style={{ padding: '7px 18px', fontSize: 12, fontWeight: 600, borderRadius: 8, cursor: 'pointer', margin: '0 auto' }}
+              >
+                <Plus size={14} strokeWidth={2} style={{ marginRight: 6 }} />
+                Add First Cash Entry
+              </button>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: Object.keys(grouped).length === 1 ? '1fr' : 'repeat(auto-fit, minmax(340px, 1fr))',
+                gap: 12,
+              }}
+            >
+              {Object.entries(grouped)
+                .sort(([, a], [, b]) => {
+                  const sumA = a.reduce((s, h) => s + Number(h.quantity), 0);
+                  const sumB = b.reduce((s, h) => s + Number(h.quantity), 0);
+                  return sumB - sumA;
+                })
+                .map(([destName, entries]) => {
+                  const meta = getDestinationMeta(destName);
+                  const LocIcon = meta.icon;
+                  const locationTotal = entries.reduce((s, h) => s + Number(h.quantity), 0);
+                  const pct = totalINR > 0 ? (locationTotal / totalINR) * 100 : 0;
+
+                  return (
+                    <div
+                      key={destName}
+                      className="card"
+                      style={{ padding: 0, overflow: 'hidden' }}
+                    >
+                      {/* Top color bar */}
+                      <div style={{ height: 3, backgroundColor: meta.color }} />
+
+                      <div style={{ padding: '14px 18px' }}>
+                        {/* Location Header */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div
+                              style={{
+                                width: 38, height: 38, borderRadius: 10,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                backgroundColor: `${meta.color}1a`, border: `1px solid ${meta.color}35`,
+                                flexShrink: 0,
+                              }}
+                            >
+                              <LocIcon size={18} style={{ color: meta.color }} />
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
+                                {meta.label}
+                              </div>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+                                {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: meta.color }}>
+                              {fmt(locationTotal)}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+                              {pct.toFixed(1)}% of total
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Share bar */}
+                        <div style={{ height: 4, width: '100%', background: 'var(--divider-2)', borderRadius: 2, overflow: 'hidden', marginBottom: 12 }}>
+                          <div
+                            style={{
+                              height: '100%',
+                              width: `${pct}%`,
+                              backgroundColor: meta.color,
+                              borderRadius: 2,
+                              transition: 'width 0.5s ease',
+                            }}
+                          />
+                        </div>
+
+                        {/* Entries list */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {entries.map((h) => {
+                            const { userNote } = decodeEntry(h);
+                            return (
+                              <div
+                                key={h._id}
+                                style={{
+                                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                  padding: '8px 12px', borderRadius: 9,
+                                  background: 'var(--shell-bg)',
+                                  border: '1px solid var(--divider-2)',
+                                  gap: 10,
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                                  <IndianRupee size={14} style={{ color: accentColor, flexShrink: 0 }} />
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                                      {fmt(h.quantity)}
+                                    </div>
+                                    {userNote && (
+                                      <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {userNote}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                                  <button
+                                    onClick={() => openEdit(h)}
+                                    title="Edit"
+                                    style={{
+                                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                      width: 28, height: 28, borderRadius: 7,
+                                      border: '1px solid var(--card-border)', background: 'var(--card-bg)',
+                                      color: 'var(--text-secondary)', cursor: 'pointer',
+                                    }}
+                                  >
+                                    <Edit2 size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => onDeleteHolding(h)}
+                                    title="Delete"
+                                    style={{
+                                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                      width: 28, height: 28, borderRadius: 7,
+                                      border: '1px solid var(--negative-bg)', background: 'var(--negative-bg)',
+                                      color: 'var(--negative)', cursor: 'pointer',
+                                    }}
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
           )}
         </div>
 
-        {cashHoldings.length === 0 ? (
-          <div className="glass-card rounded-3xl p-12 text-center border-dashed dark:border-slate-800 border-slate-300">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-4">
-              <IndianRupee className="w-8 h-8" />
-            </div>
-            <h3 className="text-xl font-bold dark:text-white text-slate-900 mb-2 font-heading">No Cash Added Yet</h3>
-            <p className="dark:text-slate-400 text-slate-600 text-sm max-w-md mx-auto mb-6">
-              Start tracking your INR cash by adding where you keep it — your purse, Google Pay, savings account, and more.
-            </p>
-            <button
-              onClick={openAdd}
-              className="px-6 py-3 rounded-2xl text-white font-bold text-sm transition shadow-lg cursor-pointer"
-              style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
-            >
-              + Add First Cash Entry
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {Object.entries(grouped)
-              .sort(([, a], [, b]) => {
-                const sumA = a.reduce((s, h) => s + Number(h.quantity), 0);
-                const sumB = b.reduce((s, h) => s + Number(h.quantity), 0);
-                return sumB - sumA;
-              })
-              .map(([destName, entries]) => {
-                const meta = getDestinationMeta(destName);
-                const LocIcon = meta.icon;
-                const locationTotal = entries.reduce((s, h) => s + Number(h.quantity), 0);
-                const pct = totalINR > 0 ? (locationTotal / totalINR) * 100 : 0;
-
-                return (
-                  <div
-                    key={destName}
-                    className="glass-card rounded-3xl p-5 border dark:border-slate-800/80 border-slate-200 relative overflow-hidden"
-                  >
-                    {/* Top color bar */}
-                    <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: meta.color }} />
-
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className="w-10 h-10 rounded-xl flex items-center justify-center"
-                          style={{ backgroundColor: `${meta.color}20`, border: `1px solid ${meta.color}40` }}
-                        >
-                          <LocIcon className="w-5 h-5" style={{ color: meta.color }} />
-                        </div>
-                        <div>
-                          <div className="font-bold dark:text-white text-slate-900 text-sm">{meta.label}</div>
-                          <div className="text-xs dark:text-slate-400 text-slate-500">
-                            {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-extrabold font-heading" style={{ color: meta.color }}>
-                          {fmt(locationTotal)}
-                        </div>
-                        <div className="text-[11px] dark:text-slate-400 text-slate-500">{pct.toFixed(1)}% of total</div>
-                      </div>
-                    </div>
-
-                    {/* Share bar */}
-                    <div className="h-1.5 w-full dark:bg-slate-800 bg-slate-200 rounded-full overflow-hidden mb-4">
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${pct}%`, backgroundColor: meta.color }}
-                      />
-                    </div>
-
-                    {/* Entries list */}
-                    <div className="space-y-2">
-                      {entries.map((h) => {
-                        const { userNote } = decodeEntry(h);
-                        return (
-                          <div
-                            key={h._id}
-                            className="flex items-center justify-between p-3 rounded-xl dark:bg-slate-900/60 bg-slate-50 border dark:border-slate-800 border-slate-200 group"
-                          >
-                            <div className="flex items-center space-x-2 min-w-0">
-                              <IndianRupee className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                              <div className="min-w-0">
-                                <div className="font-bold dark:text-white text-slate-900 text-sm font-mono">{fmt(h.quantity)}</div>
-                                {userNote && (
-                                  <div className="text-[11px] dark:text-slate-400 text-slate-500 truncate">{userNote}</div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition">
-                              <button
-                                onClick={() => openEdit(h)}
-                                title="Edit"
-                                className="p-1.5 rounded-lg dark:bg-slate-800 bg-slate-200 dark:hover:bg-slate-700 hover:bg-slate-300 dark:text-slate-400 text-slate-600 hover:text-cyan-500 transition cursor-pointer"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => onDeleteHolding(h)}
-                                title="Delete"
-                                className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 dark:text-rose-400 transition cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        )}
+        {/* Cash Entry Modal */}
+        <CashEntryModal
+          isOpen={modalOpen}
+          onClose={() => { setModalOpen(false); setEntryToEdit(null); }}
+          onSave={handleSaveEntry}
+          entryToEdit={entryToEdit}
+          walletId={id}
+          existingDestinations={existingDestinations}
+        />
       </div>
-
-      {/* Cash Entry Modal */}
-      <CashEntryModal
-        isOpen={modalOpen}
-        onClose={() => { setModalOpen(false); setEntryToEdit(null); }}
-        onSave={handleSaveEntry}
-        entryToEdit={entryToEdit}
-        walletId={id}
-        existingDestinations={existingDestinations}
-      />
     </div>
   );
 };

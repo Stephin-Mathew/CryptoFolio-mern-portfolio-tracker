@@ -69,7 +69,7 @@ export function getWalletColor(wallet, allWallets = []) {
  * Built-in name map for common crypto and well-known stocks.
  * Used as a fallback when prices[symbol].name is missing.
  */
-const NAME_MAP = {
+export const NAME_MAP = {
   BTC: 'Bitcoin',
   ETH: 'Ethereum',
   SOL: 'Solana',
@@ -85,10 +85,31 @@ const NAME_MAP = {
   DOT: 'Polkadot',
   AVAX: 'Avalanche',
   ATOM: 'Cosmos',
+  MSOL: 'Marinade Staked SOL',
+  JITOSOL: 'Jito Staked SOL',
+  SUI: 'Sui',
+  APT: 'Aptos',
   RELIANCE: 'Reliance Industries',
   INFY: 'Infosys',
   TCS: 'Tata Consultancy',
   CANBK: 'Canara Bank',
+  ITC: 'ITC Ltd',
+  CDSL: 'Central Depository',
+  TMCV: 'Tata Motors Commercial',
+  TMPV: 'Tata Motors PV',
+  TATAMOTORS: 'Tata Motors',
+  SBIN: 'State Bank of India',
+  HDFCBANK: 'HDFC Bank',
+  ICICIBANK: 'ICICI Bank',
+  BHARTIARTL: 'Bharti Airtel',
+  KOTAKBANK: 'Kotak Mahindra Bank',
+  LT: 'Larsen & Toubro',
+  WIPRO: 'Wipro',
+  BAJFINANCE: 'Bajaj Finance',
+  MARUTI: 'Maruti Suzuki',
+  HCLTECH: 'HCL Technologies',
+  ASIANPAINT: 'Asian Paints',
+  AXISBANK: 'Axis Bank',
   PPFAS: 'Parag Parikh Flexi Cap',
   NIFTYBEES: 'Nippon Nifty BeES',
 };

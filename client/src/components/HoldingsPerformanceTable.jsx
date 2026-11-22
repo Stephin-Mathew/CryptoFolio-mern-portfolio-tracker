@@ -8,23 +8,23 @@ import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 // Performance is tracked via 24h & 7d market price changes.
 
 const TYPE_LABEL = {
-  crypto:      'Crypto',
-  stock:       'Stock',
+  crypto: 'Crypto',
+  stock: 'Stock',
   mutual_fund: 'Fund',
-  cash:        'Cash',
+  cash: 'Cash',
 };
 const TYPE_COLOR = {
-  crypto:      { bg: 'rgba(99,102,241,0.12)',  text: '#818CF8' },
-  stock:       { bg: 'rgba(16,185,129,0.12)',  text: '#34D399' },
-  mutual_fund: { bg: 'rgba(245,158,11,0.12)',  text: '#FBBF24' },
-  cash:        { bg: 'rgba(148,163,184,0.12)', text: '#94A3B8' },
+  crypto: { bg: 'rgba(99,102,241,0.12)', text: '#818CF8' },
+  stock: { bg: 'rgba(16,185,129,0.12)', text: '#34D399' },
+  mutual_fund: { bg: 'rgba(245,158,11,0.12)', text: '#FBBF24' },
+  cash: { bg: 'rgba(148,163,184,0.12)', text: '#94A3B8' },
 };
 
 function SortIcon({ col, sortCol, sortDir }) {
   if (col !== sortCol) return <ChevronsUpDown size={12} style={{ opacity: 0.3, marginLeft: 2 }} />;
   return sortDir === 'desc'
     ? <ChevronDown size={12} style={{ marginLeft: 2 }} />
-    : <ChevronUp   size={12} style={{ marginLeft: 2 }} />;
+    : <ChevronUp size={12} style={{ marginLeft: 2 }} />;
 }
 
 function ChangeCell({ value, pct }) {
@@ -125,12 +125,12 @@ export function HoldingsPerformanceTable({ metrics, prices = {} }) {
           <thead>
             <tr>
               {[
-                { col: 'symbol',    label: 'Asset' },
+                { col: 'symbol', label: 'Asset' },
                 { col: 'assetType', label: 'Type' },
-                { col: 'price',     label: 'Price' },
+                { col: 'price', label: 'Price' },
                 { col: 'change24h', label: '24h %' },
-                { col: 'change7d',  label: '7d %' },
-                { col: 'valueUsd',  label: 'Value' },
+                { col: 'change7d', label: '7d %' },
+                { col: 'valueUsd', label: 'Value' },
                 { col: 'weightPct', label: 'Weight' },
               ].map(({ col, label }) => (
                 <th key={col} style={thStyle} onClick={() => handleSort(col)}>
@@ -162,9 +162,32 @@ export function HoldingsPerformanceTable({ metrics, prices = {} }) {
                         customUrl={priceEntry?.logoUrl}
                         size={28}
                       />
-                      <div>
-                        <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 12 }}>{s.symbol}</div>
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            color: 'var(--text-primary)',
+                            fontSize: 12,
+                            maxWidth: 180,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                          title={s.symbol}
+                        >
+                          {s.symbol}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: 'var(--text-muted)',
+                            maxWidth: 180,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                          title={s.name}
+                        >
                           {s.name && s.name !== s.symbol ? s.name : ''}
                         </div>
                       </div>

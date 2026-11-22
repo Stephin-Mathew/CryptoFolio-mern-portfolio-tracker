@@ -47,7 +47,7 @@ function formatDate(d) {
 
 const LIMIT = 50;
 
-export function TransactionsPage({ showToast, onTransactionChange }) {
+export function TransactionsPage({ showToast, onTransactionChange, holdings = [], prices = {} }) {
   const { wallets } = useWallets();
   const [transactions, setTransactions] = useState([]);
   const [total, setTotal]               = useState(0);
@@ -396,6 +396,8 @@ export function TransactionsPage({ showToast, onTransactionChange }) {
         onSave={handleSave}
         txToEdit={txToEdit}
         wallets={wallets}
+        holdings={holdings}
+        prices={prices}
       />
 
       <DeleteConfirmModal
