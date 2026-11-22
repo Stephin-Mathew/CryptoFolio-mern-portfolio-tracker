@@ -7,11 +7,11 @@ import { useCurrency } from '../../context/CurrencyContext';
 import { getWalletColor } from '../../utils/assetColors';
 import {
   LayoutGrid,
-  List,
+  Briefcase,
   Wallet,
   BarChart2,
   ArrowRightLeft,
-  Sparkles,
+  RefreshCw,
   Sun,
   Moon,
   LogOut,
@@ -59,11 +59,8 @@ const CURRENCY_CONFIG = [
 export function IconRail({
   isSidebarCollapsed,
   onToggleCollapse,
-  onOpenUploadModal,
-  onOpenAddModal,
-  onOpenAddWalletModal,
-  onOpenJsonExtractModal,
   onRefreshPrices,
+  refreshingPrices,
 }) {
   const { isDark, toggleTheme } = useTheme();
   const { logout } = useAuth();
@@ -76,26 +73,19 @@ export function IconRail({
   const isAnalytics = location.pathname === '/analytics';
   const isTransactions = location.pathname === '/transactions';
 
-  // Import dropdown
-  const [importOpen, setImportOpen] = useState(false);
-  const importRef = useRef(null);
-
   // Currency dropdown
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const currencyRef = useRef(null);
 
   useEffect(() => {
     const handler = (e) => {
-      if (importRef.current && !importRef.current.contains(e.target)) {
-        setImportOpen(false);
-      }
       if (currencyRef.current && !currencyRef.current.contains(e.target)) {
         setCurrencyOpen(false);
       }
     };
-    if (importOpen || currencyOpen) document.addEventListener('mousedown', handler);
+    if (currencyOpen) document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [importOpen, currencyOpen]);
+  }, [currencyOpen]);
 
   const activeCurrency = CURRENCY_CONFIG.find((c) => c.id === currency) || CURRENCY_CONFIG[0];
 
@@ -131,18 +121,6 @@ export function IconRail({
         <LayoutGrid size={20} strokeWidth={1.6} />
       </NavLink>
 
-      {/* Nav: Holdings */}
-      <NavLink
-        to="/holdings"
-        end
-        className={({ isActive }) => `rib${isActive ? ' active' : ''}`}
-        title="Holdings"
-        aria-label="Holdings"
-        aria-current={isHoldings ? 'page' : undefined}
-      >
-        <List size={20} strokeWidth={1.6} />
-      </NavLink>
-
       {/* Nav: Wallets */}
       <NavLink
         to="/wallets"
@@ -152,6 +130,18 @@ export function IconRail({
         aria-current={isWallets ? 'page' : undefined}
       >
         <Wallet size={20} strokeWidth={1.6} />
+      </NavLink>
+
+      {/* Nav: Holdings */}
+      <NavLink
+        to="/holdings"
+        end
+        className={({ isActive }) => `rib${isActive ? ' active' : ''}`}
+        title="Holdings"
+        aria-label="Holdings"
+        aria-current={isHoldings ? 'page' : undefined}
+      >
+        <Briefcase size={20} strokeWidth={1.6} />
       </NavLink>
 
       {/* Nav: Analytics */}
@@ -176,88 +166,20 @@ export function IconRail({
         <ArrowRightLeft size={20} strokeWidth={1.6} />
       </NavLink>
 
-      {/* Import with AI (opens dropdown) */}
-      <div style={{ position: 'relative' }} ref={importRef}>
-        <button
-          className="rib"
-          onClick={() => setImportOpen((p) => !p)}
-          title="Import with AI"
-          aria-label="Import with AI"
-          aria-expanded={importOpen}
-        >
-          <Sparkles size={20} strokeWidth={1.6} />
-        </button>
-
-        {importOpen && (
-          <div
-            className="animate-fadeIn"
-            style={{
-              position: 'absolute',
-              left: '52px',
-              top: 0,
-              zIndex: 100,
-              background: 'var(--panel-bg)',
-              border: '1px solid var(--card-border)',
-              borderRadius: 12,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-              minWidth: 220,
-              overflow: 'hidden',
-            }}
-          >
-            {[
-              {
-                label: 'Upload screenshot',
-                sub: 'AI extracts holdings',
-                action: () => { onOpenUploadModal(); setImportOpen(false); },
-              },
-              {
-                label: 'Paste JSON',
-                sub: 'Import from your LLM',
-                action: () => { onOpenJsonExtractModal(); setImportOpen(false); },
-              },
-              {
-                label: 'Add holding manually',
-                sub: 'Enter details by hand',
-                action: () => { onOpenAddModal(); setImportOpen(false); },
-              },
-              {
-                label: 'Add wallet',
-                sub: 'Create a new wallet',
-                action: () => { onOpenAddWalletModal(); setImportOpen(false); },
-              },
-              {
-                label: 'Refresh prices',
-                sub: 'Update live market data',
-                action: () => { onRefreshPrices(); setImportOpen(false); },
-              },
-            ].map((item) => (
-              <button
-                key={item.label}
-                onClick={item.action}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  padding: '10px 14px',
-                  textAlign: 'left',
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  borderBottom: '1px solid var(--divider-2)',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--shell-bg)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
-              >
-                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{item.label}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{item.sub}</div>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* Spacer */}
       <div style={{ flex: 1 }} />
+
+      {/* Refresh prices button */}
+      <button
+        className="rib"
+        onClick={onRefreshPrices}
+        disabled={refreshingPrices}
+        title={refreshingPrices ? 'Refreshing prices...' : 'Refresh market prices'}
+        aria-label="Refresh market prices"
+        style={{ cursor: refreshingPrices ? 'not-allowed' : 'pointer', opacity: refreshingPrices ? 0.6 : 1 }}
+      >
+        <RefreshCw size={19} strokeWidth={1.6} className={refreshingPrices ? 'animate-spin' : ''} />
+      </button>
 
       {/* Currency Switcher */}
       <div style={{ position: 'relative' }} ref={currencyRef}>
@@ -531,7 +453,7 @@ export function ExpandedSidebar({
             fontWeight: isActive ? 600 : 400,
           })}
         >
-          <List size={16} />
+          <Briefcase size={16} />
           <span>All Holdings</span>
         </NavLink>
       </div>

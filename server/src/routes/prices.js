@@ -426,10 +426,12 @@ router.post('/lookup-batch', async (req, res) => {
       const upper = sym.toUpperCase();
 
       if (assetType === 'cash') {
+        const isINR = upper === 'INR' || it.currency === 'INR';
+        const usdPrice = isINR && inrRate > 0 ? 1.0 / inrRate : 1.0;
         priceMap[upper] = {
-          price: 1.0,
-          priceInr: 1.0,
-          currency: 'INR',
+          price: usdPrice,
+          priceInr: isINR ? 1.0 : inrRate,
+          currency: isINR ? 'INR' : 'USD',
           change24h: 0,
           change7d: 0,
           change30d: 0,
@@ -437,8 +439,8 @@ router.post('/lookup-batch', async (req, res) => {
         resolvedMap[upper] = {
           resolvedSymbol: upper,
           assetType: 'cash',
-          currency: 'INR',
-          livePrice: 1.0,
+          currency: isINR ? 'INR' : 'USD',
+          livePrice: isINR ? 1.0 : usdPrice,
         };
         return;
       }

@@ -6,7 +6,6 @@ import { useCurrency } from '../../context/CurrencyContext';
 import { useWallets } from '../../context/WalletContext';
 import {
   ChevronDown,
-  Sparkles,
   Sun,
   Moon,
   LogOut,
@@ -16,17 +15,11 @@ import {
 
 /**
  * TopBar — 64px, sits at the top of the panel.
- * Left: page title. Right: Import with AI & Actions button + user avatar + name + wallet count + chevron menu.
+ * Left: page title. Right: Currency switcher + user avatar + name + wallet count + chevron menu.
  */
 export function TopBar({
   activeWalletName,
   onOpenAuthModal,
-  onOpenUploadModal,
-  onOpenJsonExtractModal,
-  onOpenAddModal,
-  onOpenAddWalletModal,
-  onRefreshPrices,
-  refreshingPrices,
 }) {
   const { user, isAuthenticated, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
@@ -35,22 +28,17 @@ export function TopBar({
   const location = useLocation();
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
   const menuRef = useRef(null);
-  const importRef = useRef(null);
 
   useEffect(() => {
     const handler = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setMenuOpen(false);
       }
-      if (importRef.current && !importRef.current.contains(e.target)) {
-        setImportOpen(false);
-      }
     };
-    if (menuOpen || importOpen) document.addEventListener('mousedown', handler);
+    if (menuOpen) document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [menuOpen, importOpen]);
+  }, [menuOpen]);
 
   // Determine page title
   const getTitle = () => {
@@ -65,50 +53,6 @@ export function TopBar({
   };
 
   const initial = user?.firstName?.[0] || user?.fullName?.[0] || user?.email?.[0] || 'U';
-
-  const importItems = [
-    {
-      label: 'Upload screenshot',
-      sub: 'AI extracts holdings with Gemini Vision',
-      action: () => {
-        if (onOpenUploadModal) onOpenUploadModal();
-        setImportOpen(false);
-      },
-    },
-    {
-      label: 'Paste JSON',
-      sub: 'Import structured JSON from your LLM',
-      action: () => {
-        if (onOpenJsonExtractModal) onOpenJsonExtractModal();
-        setImportOpen(false);
-      },
-    },
-    {
-      label: 'Add holding manually',
-      sub: 'Enter holding details by hand',
-      action: () => {
-        if (onOpenAddModal) onOpenAddModal();
-        setImportOpen(false);
-      },
-    },
-    {
-      label: 'Add wallet',
-      sub: 'Create a new portfolio wallet',
-      action: () => {
-        if (onOpenAddWalletModal) onOpenAddWalletModal();
-        setImportOpen(false);
-      },
-    },
-    {
-      label: 'Refresh prices',
-      sub: 'Update all live market prices',
-      action: () => {
-        if (onRefreshPrices) onRefreshPrices();
-        setImportOpen(false);
-      },
-      disabled: refreshingPrices,
-    },
-  ];
 
   return (
     <div className="top-bar">
@@ -132,88 +76,6 @@ export function TopBar({
               {c}
             </button>
           ))}
-        </div>
-
-        {/* Import with AI & Actions button (Swapped from bottom tab bar) */}
-        <div style={{ position: 'relative' }} ref={importRef}>
-          <button
-            className="btn-primary"
-            onClick={() => setImportOpen((p) => !p)}
-            title="Import with AI & Actions"
-            aria-label="Import with AI & Actions"
-            aria-expanded={importOpen}
-            style={{
-              minHeight: 34,
-              padding: '0 12px',
-              fontSize: 12,
-              fontWeight: 600,
-              gap: 6,
-              borderRadius: 10,
-              cursor: 'pointer',
-            }}
-          >
-            <Sparkles size={15} strokeWidth={1.8} />
-            <span>Import</span>
-          </button>
-
-          {importOpen && (
-            <div
-              className="animate-fadeIn"
-              style={{
-                position: 'absolute',
-                right: 0,
-                top: 'calc(100% + 8px)',
-                zIndex: 100,
-                background: 'var(--panel-bg)',
-                border: '1px solid var(--card-border)',
-                borderRadius: 12,
-                boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-                minWidth: 230,
-                overflow: 'hidden',
-              }}
-            >
-              <div
-                style={{
-                  padding: '10px 14px',
-                  borderBottom: '1px solid var(--divider-1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: 'var(--text-primary)',
-                }}
-              >
-                <Sparkles size={14} style={{ color: '#06B6D4' }} />
-                <span>Import with AI & Actions</span>
-              </div>
-
-              {importItems.map((item) => (
-                <button
-                  key={item.label}
-                  onClick={item.action}
-                  disabled={item.disabled}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    padding: '10px 14px',
-                    textAlign: 'left',
-                    border: 'none',
-                    background: 'none',
-                    cursor: item.disabled ? 'not-allowed' : 'pointer',
-                    fontFamily: 'inherit',
-                    borderBottom: '1px solid var(--divider-2)',
-                    opacity: item.disabled ? 0.5 : 1,
-                  }}
-                  onMouseEnter={(e) => { if (!item.disabled) e.currentTarget.style.background = 'var(--shell-bg)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
-                >
-                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{item.label}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{item.sub}</div>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         {isAuthenticated ? (

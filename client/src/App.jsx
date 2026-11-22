@@ -412,11 +412,8 @@ function AppContent() {
               <IconRail
                 isSidebarCollapsed={isSidebarCollapsed}
                 onToggleCollapse={handleToggleSidebarCollapse}
-                onOpenUploadModal={openUploadModal}
-                onOpenAddModal={openAddHoldingModal}
-                onOpenAddWalletModal={openAddWalletModal}
-                onOpenJsonExtractModal={openJsonExtractModal}
                 onRefreshPrices={handleRefreshPrices}
+                refreshingPrices={refreshingPrices}
               />
               {!isSidebarCollapsed && (
                 <ExpandedSidebar
@@ -435,12 +432,6 @@ function AppContent() {
             <TopBar
               activeWalletName={activeWallet?.name}
               onOpenAuthModal={() => setIsAuthModalOpen(true)}
-              onOpenUploadModal={openUploadModal}
-              onOpenJsonExtractModal={openJsonExtractModal}
-              onOpenAddModal={openAddHoldingModal}
-              onOpenAddWalletModal={openAddWalletModal}
-              onRefreshPrices={handleRefreshPrices}
-              refreshingPrices={refreshingPrices}
             />
 
             {/* Page content */}
@@ -542,6 +533,8 @@ function AppContent() {
                         onDeleteHolding={promptDeleteHolding}
                         onEditClick={(holding) => { setHoldingToEdit(holding); setTargetWalletId(holding.walletId || ''); setIsFormModalOpen(true); }}
                         onOpenAddModalWithWallet={(wId) => { setHoldingToEdit(null); setTargetWalletId(wId); setIsFormModalOpen(true); }}
+                        onOpenUploadModal={(wId) => { setTargetWalletId(wId || activeWalletId); setIsUploadModalOpen(true); }}
+                        onOpenJsonExtractModal={(wId) => { setTargetWalletId(wId || activeWalletId); setIsJsonExtractModalOpen(true); }}
                         onOpenEditWallet={(w) => { setWalletToEdit(w); setIsWalletModalOpen(true); }}
                         onDeleteWallet={promptDeleteWallet}
                         onClearWalletHoldings={promptClearWalletHoldings}
@@ -581,13 +574,7 @@ function AppContent() {
 
         {/* Mobile bottom tab bar */}
         {isAuthenticated && (
-          <BottomTabBar
-            onOpenUploadModal={openUploadModal}
-            onOpenJsonExtractModal={openJsonExtractModal}
-            onOpenAddModal={openAddHoldingModal}
-            onOpenAddWalletModal={openAddWalletModal}
-            onRefreshPrices={handleRefreshPrices}
-          />
+          <BottomTabBar />
         )}
 
         {/* Modals */}

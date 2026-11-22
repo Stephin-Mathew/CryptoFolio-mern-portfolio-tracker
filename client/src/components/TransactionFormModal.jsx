@@ -58,9 +58,11 @@ const EMPTY_FORM = {
   fromAsset: '',
   fromAmount: '',
   fromWalletId: '',
+  fromHoldingId: '',
   toAsset: '',
   toAmount: '',
   toWalletId: '',
+  toHoldingId: '',
   valueUSD: '',
   notes: '',
   tags: '',
@@ -68,10 +70,11 @@ const EMPTY_FORM = {
 };
 
 /**
- * Rich, spacious Asset Dropdown with official logos, names, balances, and search.
+ * Rich, spacious Asset Dropdown with official logos, names, balances, entry distinctions, and search.
  */
 function AssetDropdown({
   value,
+  selectedHoldingId = '',
   onChange,
   holdings = [],
   fallbackPresets = [],
@@ -100,10 +103,38 @@ function AssetDropdown({
     return () => document.removeEventListener('mousedown', handler);
   }, [isOpen]);
 
-  // Selected holding object
-  const selectedHolding = holdings.find(
-    (h) => h.symbol?.toUpperCase() === value?.toUpperCase()
-  );
+  // Selected holding object: match by unique holding ID first, then fallback to symbol
+  const selectedHolding = useMemo(() => {
+    if (selectedHoldingId) {
+      const found = holdings.find((h) => String(h._id) === String(selectedHoldingId));
+      if (found) return found;
+    }
+    if (value) {
+      return holdings.find((h) => h.symbol?.toUpperCase() === value?.toUpperCase()) || null;
+    }
+    return null;
+  }, [holdings, selectedHoldingId, value]);
+
+  // Identify symbols that have multiple entries in this wallet/holding list
+  const symbolDuplicateMap = useMemo(() => {
+    const counts = {};
+    const indexes = {};
+    holdings.forEach((h) => {
+      const s = h.symbol?.toUpperCase();
+      if (!s) return;
+      counts[s] = (counts[s] || 0) + 1;
+    });
+    const map = {};
+    holdings.forEach((h) => {
+      const s = h.symbol?.toUpperCase();
+      if (!s) return;
+      if (counts[s] > 1) {
+        indexes[s] = (indexes[s] || 0) + 1;
+        map[h._id] = { index: indexes[s], total: counts[s] };
+      }
+    });
+    return map;
+  }, [holdings]);
 
   // Combined list for display (holdings first, then optional presets not already listed)
   const displayItems = useMemo(() => {
@@ -211,7 +242,7 @@ function AssetDropdown({
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
             <AssetLogo symbol={value} assetType={selectedHolding?.assetType || 'crypto'} size={30} />
             <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
                   {value}
                 </span>
@@ -230,10 +261,35 @@ function AssetDropdown({
                     {selectedHolding.assetType}
                   </span>
                 )}
+                {selectedHolding?._id && symbolDuplicateMap[selectedHolding._id] && (
+                  <span
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 700,
+                      padding: '1px 5px',
+                      borderRadius: 4,
+                      background: 'rgba(99,102,241,0.15)',
+                      color: 'var(--accent, #6366F1)',
+                      border: '1px solid rgba(99,102,241,0.3)',
+                    }}
+                  >
+                    Entry #{symbolDuplicateMap[selectedHolding._id].index}
+                  </span>
+                )}
               </div>
               {selectedHolding?.quantity != null && (
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', marginTop: 1 }}>
-                  Balance: <strong>{Number(selectedHolding.quantity).toLocaleString()}</strong> {value}
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums', marginTop: 1, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span>Balance: <strong>{Number(selectedHolding.quantity).toLocaleString(undefined, { maximumFractionDigits: 6 })}</strong> {value}</span>
+                  {selectedHolding.chain && (
+                    <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 3, background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-muted)' }}>
+                      {selectedHolding.chain}
+                    </span>
+                  )}
+                  {selectedHolding.notes && (
+                    <span style={{ fontSize: 9, color: 'var(--text-muted)', fontStyle: 'italic', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      ({selectedHolding.notes})
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -324,10 +380,14 @@ function AssetDropdown({
               </div>
             ) : (
               filteredItems.map((item) => {
-                const isSelected = item.symbol?.toUpperCase() === value?.toUpperCase();
+                const isSelected = selectedHoldingId
+                  ? String(item._id) === String(selectedHoldingId)
+                  : (item.isPreset && value?.toUpperCase() === item.symbol?.toUpperCase()) ||
+                    (!item.isPreset && !selectedHoldingId && value?.toUpperCase() === item.symbol?.toUpperCase());
                 const priceObj = prices[item.symbol];
                 const unitPrice = typeof priceObj === 'object' ? Number(priceObj?.price || 0) : Number(priceObj || 0);
                 const estValueUSD = unitPrice > 0 && item.quantity != null ? Number(item.quantity) * unitPrice : null;
+                const dupInfo = symbolDuplicateMap[item._id];
 
                 return (
                   <div
@@ -361,7 +421,7 @@ function AssetDropdown({
 
                     {/* Symbol & Name */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
                           {item.symbol}
                         </span>
@@ -380,6 +440,21 @@ function AssetDropdown({
                             {item.assetType}
                           </span>
                         )}
+                        {dupInfo && (
+                          <span
+                            style={{
+                              fontSize: 9,
+                              fontWeight: 700,
+                              padding: '1px 5px',
+                              borderRadius: 4,
+                              background: isSelected ? 'rgba(99,102,241,0.22)' : 'rgba(99,102,241,0.1)',
+                              color: 'var(--accent, #6366F1)',
+                              border: '1px solid rgba(99,102,241,0.25)',
+                            }}
+                          >
+                            Entry #{dupInfo.index} of {dupInfo.total}
+                          </span>
+                        )}
                       </div>
                       <div
                         style={{
@@ -389,9 +464,27 @@ function AssetDropdown({
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
                           marginTop: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
                         }}
                       >
-                        {item.name || item.mfSchemeName || item.walletOrAccount || (walletName ? `in ${walletName}` : 'Portfolio asset')}
+                        <span>{item.name || item.mfSchemeName || item.walletOrAccount || (walletName ? `in ${walletName}` : 'Portfolio asset')}</span>
+                        {item.chain && (
+                          <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 3, background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-muted)' }}>
+                            {item.chain}
+                          </span>
+                        )}
+                        {item.notes && (
+                          <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                            • {item.notes}
+                          </span>
+                        )}
+                        {item.avgBuyPrice != null && Number(item.avgBuyPrice) > 0 && (
+                          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                            • avg ${Number(item.avgBuyPrice).toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -960,18 +1053,20 @@ export function TransactionFormModal({
     setIsReviewing(false);
     if (txToEdit) {
       setForm({
-        date: toLocalDatetimeStr(txToEdit.date),
-        type: txToEdit.type || 'buy',
-        fromAsset: txToEdit.fromAsset || '',
-        fromAmount: txToEdit.fromAmount != null ? String(txToEdit.fromAmount) : '',
-        fromWalletId: txToEdit.fromWalletId ? String(txToEdit.fromWalletId) : '',
-        toAsset: txToEdit.toAsset || '',
-        toAmount: txToEdit.toAmount != null ? String(txToEdit.toAmount) : '',
-        toWalletId: txToEdit.toWalletId ? String(txToEdit.toWalletId) : '',
-        valueUSD: txToEdit.valueUSD != null ? String(txToEdit.valueUSD) : '',
-        notes: txToEdit.notes || '',
-        tags: (txToEdit.tags || []).join(', '),
-        syncBalances: txToEdit.syncBalances !== false,
+        date:          toLocalDatetimeStr(txToEdit.date),
+        type:          txToEdit.type || 'buy',
+        fromAsset:     txToEdit.fromAsset || '',
+        fromAmount:    txToEdit.fromAmount != null ? String(txToEdit.fromAmount) : '',
+        fromWalletId:  txToEdit.fromWalletId ? String(txToEdit.fromWalletId) : '',
+        fromHoldingId: txToEdit.fromHoldingId ? String(txToEdit.fromHoldingId) : '',
+        toAsset:       txToEdit.toAsset || '',
+        toAmount:      txToEdit.toAmount != null ? String(txToEdit.toAmount) : '',
+        toWalletId:    txToEdit.toWalletId ? String(txToEdit.toWalletId) : '',
+        toHoldingId:   txToEdit.toHoldingId ? String(txToEdit.toHoldingId) : '',
+        valueUSD:      txToEdit.valueUSD != null ? String(txToEdit.valueUSD) : '',
+        notes:         txToEdit.notes || '',
+        tags:          (txToEdit.tags || []).join(', '),
+        syncBalances:  txToEdit.syncBalances !== false,
       });
       setCustomFromAsset(true);
       setCustomToAsset(true);
@@ -997,8 +1092,12 @@ export function TransactionFormModal({
     return activeHoldings.filter((h) => h.walletId && String(h.walletId) === String(form.toWalletId));
   }, [form.toWalletId, activeHoldings]);
 
-  // Lookup the exact holding being deducted
+  // Lookup the exact holding being deducted: match by holding ID first!
   const matchedFromHolding = useMemo(() => {
+    if (form.fromHoldingId) {
+      const match = activeHoldings.find((h) => String(h._id) === String(form.fromHoldingId));
+      if (match) return match;
+    }
     if (!form.fromAsset) return null;
     const sym = form.fromAsset.toUpperCase().trim();
     if (form.fromWalletId) {
@@ -1008,10 +1107,14 @@ export function TransactionFormModal({
       if (match) return match;
     }
     return activeHoldings.find((h) => h.symbol?.toUpperCase() === sym) || null;
-  }, [form.fromAsset, form.fromWalletId, activeHoldings]);
+  }, [form.fromHoldingId, form.fromAsset, form.fromWalletId, activeHoldings]);
 
-  // Lookup the exact holding being added to
+  // Lookup the exact holding being added to: match by holding ID first!
   const matchedToHolding = useMemo(() => {
+    if (form.toHoldingId) {
+      const match = activeHoldings.find((h) => String(h._id) === String(form.toHoldingId));
+      if (match) return match;
+    }
     if (!form.toAsset) return null;
     const sym = form.toAsset.toUpperCase().trim();
     if (form.toWalletId) {
@@ -1021,7 +1124,7 @@ export function TransactionFormModal({
       if (match) return match;
     }
     return activeHoldings.find((h) => h.symbol?.toUpperCase() === sym) || null;
-  }, [form.toAsset, form.toWalletId, activeHoldings]);
+  }, [form.toHoldingId, form.toAsset, form.toWalletId, activeHoldings]);
 
   // Wallet metadata
   const fromWallet = useMemo(() => wallets.find((w) => String(w._id) === String(form.fromWalletId)), [wallets, form.fromWalletId]);
@@ -1065,18 +1168,20 @@ export function TransactionFormModal({
   const handleConfirmSubmit = async () => {
     setError('');
     const payload = {
-      date: new Date(form.date).toISOString(),
-      type: form.type,
-      fromAsset: form.fromAsset.trim().toUpperCase() || null,
-      fromAmount: form.fromAmount !== '' ? Number(form.fromAmount) : null,
-      fromWalletId: form.fromWalletId || null,
-      toAsset: form.toAsset.trim().toUpperCase() || null,
-      toAmount: form.toAmount !== '' ? Number(form.toAmount) : null,
-      toWalletId: form.toWalletId || null,
-      valueUSD: form.valueUSD !== '' ? Number(form.valueUSD) : null,
-      notes: form.notes.trim(),
-      tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
-      syncBalances: Boolean(form.syncBalances),
+      date:          new Date(form.date).toISOString(),
+      type:          form.type,
+      fromAsset:     form.fromAsset.trim().toUpperCase() || null,
+      fromAmount:    form.fromAmount !== '' ? Number(form.fromAmount) : null,
+      fromWalletId:  form.fromWalletId || null,
+      fromHoldingId: form.fromHoldingId || null,
+      toAsset:       form.toAsset.trim().toUpperCase() || null,
+      toAmount:      form.toAmount !== '' ? Number(form.toAmount) : null,
+      toWalletId:    form.toWalletId || null,
+      toHoldingId:   form.toHoldingId || null,
+      valueUSD:      form.valueUSD !== '' ? Number(form.valueUSD) : null,
+      notes:         form.notes.trim(),
+      tags:          form.tags.split(',').map((t) => t.trim()).filter(Boolean),
+      syncBalances:  Boolean(form.syncBalances),
     };
 
     setSubmitting(true);
@@ -1295,6 +1400,8 @@ export function TransactionFormModal({
                         </span>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                           in {fromWallet?.name || 'Unassigned / General'}
+                          {matchedFromHolding?.chain ? ` · ${matchedFromHolding.chain}` : ''}
+                          {matchedFromHolding?.notes ? ` · ${matchedFromHolding.notes}` : ''}
                         </div>
                       </div>
                     </div>
@@ -1379,6 +1486,8 @@ export function TransactionFormModal({
                         </span>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                           into {toWallet?.name || 'Unassigned / General'}
+                          {matchedToHolding?.chain ? ` · ${matchedToHolding.chain}` : ''}
+                          {matchedToHolding?.notes ? ` · ${matchedToHolding.notes}` : ''}
                         </div>
                       </div>
                     </div>
@@ -1561,6 +1670,13 @@ export function TransactionFormModal({
                       onChange={(newWalletId) => {
                         set('fromWalletId', newWalletId);
                         setCustomFromAsset(false);
+                        if (form.fromHoldingId && newWalletId) {
+                          const h = activeHoldings.find((x) => String(x._id) === String(form.fromHoldingId));
+                          if (h && String(h.walletId) !== String(newWalletId)) {
+                            set('fromHoldingId', '');
+                            set('fromAsset', '');
+                          }
+                        }
                       }}
                       wallets={wallets}
                       holdings={activeHoldings}
@@ -1581,7 +1697,9 @@ export function TransactionFormModal({
                         {customFromAsset && (
                           <button
                             type="button"
-                            onClick={() => setCustomFromAsset(false)}
+                            onClick={() => {
+                              setCustomFromAsset(false);
+                            }}
                             style={{
                               background: 'none', border: 'none', fontSize: 10,
                               color: 'var(--accent, #6366F1)', cursor: 'pointer', padding: 0,
@@ -1594,8 +1712,10 @@ export function TransactionFormModal({
 
                       <AssetDropdown
                         value={form.fromAsset}
+                        selectedHoldingId={form.fromHoldingId}
                         onChange={(sym, holding) => {
                           set('fromAsset', sym);
+                          set('fromHoldingId', holding?._id ? String(holding._id) : '');
                           // Auto-select wallet if holding has a wallet and no wallet was chosen yet
                           if (holding?.walletId && !form.fromWalletId) {
                             set('fromWalletId', String(holding.walletId));
@@ -1606,8 +1726,14 @@ export function TransactionFormModal({
                         walletName={fromWallet?.name || ''}
                         prices={prices}
                         isCustom={customFromAsset}
-                        onCustomToggle={() => setCustomFromAsset((p) => !p)}
-                        onCustomTextChange={(text) => set('fromAsset', text)}
+                        onCustomToggle={() => {
+                          setCustomFromAsset((p) => !p);
+                          if (!customFromAsset) set('fromHoldingId', '');
+                        }}
+                        onCustomTextChange={(text) => {
+                          set('fromAsset', text);
+                          set('fromHoldingId', '');
+                        }}
                       />
                     </div>
 
@@ -1704,6 +1830,13 @@ export function TransactionFormModal({
                       onChange={(newWalletId) => {
                         set('toWalletId', newWalletId);
                         setCustomToAsset(false);
+                        if (form.toHoldingId && newWalletId) {
+                          const h = activeHoldings.find((x) => String(x._id) === String(form.toHoldingId));
+                          if (h && String(h.walletId) !== String(newWalletId)) {
+                            set('toHoldingId', '');
+                            set('toAsset', '');
+                          }
+                        }
                       }}
                       wallets={wallets}
                       holdings={activeHoldings}
@@ -1724,7 +1857,9 @@ export function TransactionFormModal({
                         {customToAsset && (
                           <button
                             type="button"
-                            onClick={() => setCustomToAsset(false)}
+                            onClick={() => {
+                              setCustomToAsset(false);
+                            }}
                             style={{
                               background: 'none', border: 'none', fontSize: 10,
                               color: 'var(--accent, #6366F1)', cursor: 'pointer', padding: 0,
@@ -1737,8 +1872,10 @@ export function TransactionFormModal({
 
                       <AssetDropdown
                         value={form.toAsset}
+                        selectedHoldingId={form.toHoldingId}
                         onChange={(sym, holding) => {
                           set('toAsset', sym);
+                          set('toHoldingId', holding?._id ? String(holding._id) : '');
                           if (holding?.walletId && !form.toWalletId) {
                             set('toWalletId', String(holding.walletId));
                           }
@@ -1749,8 +1886,14 @@ export function TransactionFormModal({
                         walletName={toWallet?.name || ''}
                         prices={prices}
                         isCustom={customToAsset}
-                        onCustomToggle={() => setCustomToAsset((p) => !p)}
-                        onCustomTextChange={(text) => set('toAsset', text)}
+                        onCustomToggle={() => {
+                          setCustomToAsset((p) => !p);
+                          if (!customToAsset) set('toHoldingId', '');
+                        }}
+                        onCustomTextChange={(text) => {
+                          set('toAsset', text);
+                          set('toHoldingId', '');
+                        }}
                       />
                     </div>
 

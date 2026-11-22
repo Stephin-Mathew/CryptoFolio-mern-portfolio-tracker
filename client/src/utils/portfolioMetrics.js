@@ -1,3 +1,5 @@
+import { getAssetName } from './assetColors';
+
 /**
  * computePortfolio — single pure function that derives all portfolio metrics
  * from raw holdings + prices + wallets.
@@ -9,8 +11,9 @@
 /** Shared isINR detection logic (mirrors existing PortfolioSummary). */
 export function detectIsINR(holding, priceEntry) {
   return (
-    holding.assetType === 'mutual_fund' ||
+    holding.symbol === 'INR' ||
     holding.currency === 'INR' ||
+    holding.assetType === 'mutual_fund' ||
     priceEntry?.currency === 'INR' ||
     (priceEntry?.priceInr != null && priceEntry.priceInr > 0) ||
     (priceEntry?.navInr != null && priceEntry.navInr > 0) ||
@@ -22,15 +25,17 @@ export function detectIsINR(holding, priceEntry) {
 /** Get the USD price for a single holding. */
 export function getHoldingPriceUSD(holding, prices, inrRate = 95.7) {
   const entry = prices[holding.symbol];
+  const isINR = detectIsINR(holding, entry);
 
-  if (holding.assetType === 'cash') return 1;
+  if (holding.assetType === 'cash') {
+    return isINR && inrRate > 0 ? 1 / inrRate : 1;
+  }
 
   if (entry !== undefined) {
     return typeof entry === 'object' ? Number(entry.price || 0) : Number(entry || 0);
   }
 
   // No price data — fall back to avgBuyPrice
-  const isINR = detectIsINR(holding, entry);
   const raw = Number(holding.avgBuyPrice) || 0;
   return isINR && inrRate > 0 ? raw / inrRate : raw;
 }
@@ -99,7 +104,7 @@ export function computePortfolio(holdings = [], prices = {}, wallets = []) {
     if (!symbolMap.has(sym)) {
       symbolMap.set(sym, {
         symbol: sym,
-        name: entry?.name || h.mfSchemeName || h.symbol || sym,
+        name: entry?.name || h.mfSchemeName || getAssetName(sym, h, entry) || sym,
         price,
         valueUsd: 0,
         costUsd: 0,

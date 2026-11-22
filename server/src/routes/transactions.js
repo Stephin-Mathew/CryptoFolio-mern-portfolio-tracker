@@ -93,8 +93,8 @@ router.post('/', async (req, res) => {
     const userId = req.user._id;
     const {
       date, type,
-      fromAsset, fromAmount, fromWalletId,
-      toAsset, toAmount, toWalletId,
+      fromAsset, fromAmount, fromWalletId, fromHoldingId,
+      toAsset, toAmount, toWalletId, toHoldingId,
       priceUSD, valueUSD, tags, notes, chartPinTs,
       syncBalances = true,
     } = req.body;
@@ -104,20 +104,22 @@ router.post('/', async (req, res) => {
 
     const tx = await Transaction.create({
       userId,
-      date:         new Date(date),
+      date:          new Date(date),
       type,
-      fromAsset:    fromAsset?.trim() || '',
-      fromAmount:   fromAmount  != null ? Number(fromAmount)  : null,
-      fromWalletId: fromWalletId || null,
-      toAsset:      toAsset?.trim() || '',
-      toAmount:     toAmount    != null ? Number(toAmount)    : null,
-      toWalletId:   toWalletId || null,
-      priceUSD:     priceUSD    != null ? Number(priceUSD)    : null,
-      valueUSD:     valueUSD    != null ? Number(valueUSD)    : null,
-      tags:         Array.isArray(tags) ? tags.map(t => t.trim()).filter(Boolean) : [],
-      notes:        notes?.trim() || '',
-      syncBalances: Boolean(syncBalances),
-      chartPinTs:   chartPinTs ? new Date(chartPinTs) : null,
+      fromAsset:     fromAsset?.trim() || '',
+      fromAmount:    fromAmount   != null ? Number(fromAmount)   : null,
+      fromWalletId:  fromWalletId || null,
+      fromHoldingId: fromHoldingId || null,
+      toAsset:       toAsset?.trim() || '',
+      toAmount:      toAmount     != null ? Number(toAmount)     : null,
+      toWalletId:    toWalletId   || null,
+      toHoldingId:   toHoldingId  || null,
+      priceUSD:      priceUSD     != null ? Number(priceUSD)     : null,
+      valueUSD:      valueUSD     != null ? Number(valueUSD)     : null,
+      tags:          Array.isArray(tags) ? tags.map(t => t.trim()).filter(Boolean) : [],
+      notes:         notes?.trim() || '',
+      syncBalances:  Boolean(syncBalances),
+      chartPinTs:    chartPinTs ? new Date(chartPinTs) : null,
     });
 
     // Auto-update balances if enabled
