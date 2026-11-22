@@ -32,6 +32,7 @@ const EMPTY_FORM = {
   valueUSD: '',
   notes: '',
   tags: '',
+  syncBalances: true,
 };
 
 export function TransactionFormModal({ isOpen, onClose, onSave, txToEdit, wallets = [] }) {
@@ -54,6 +55,7 @@ export function TransactionFormModal({ isOpen, onClose, onSave, txToEdit, wallet
         valueUSD:     txToEdit.valueUSD != null ? String(txToEdit.valueUSD) : '',
         notes:        txToEdit.notes || '',
         tags:         (txToEdit.tags || []).join(', '),
+        syncBalances: txToEdit.syncBalances !== false,
       });
     } else {
       setForm({ ...EMPTY_FORM, date: toLocalDatetimeStr() });
@@ -83,6 +85,7 @@ export function TransactionFormModal({ isOpen, onClose, onSave, txToEdit, wallet
       valueUSD:     form.valueUSD !== '' ? Number(form.valueUSD) : null,
       notes:        form.notes.trim(),
       tags:         form.tags.split(',').map((t) => t.trim()).filter(Boolean),
+      syncBalances: Boolean(form.syncBalances),
     };
 
     setSubmitting(true);
@@ -335,6 +338,36 @@ export function TransactionFormModal({ isOpen, onClose, onSave, txToEdit, wallet
               style={{ ...inputStyle, resize: 'vertical', minHeight: 56 }}
             />
           </div>
+
+          {/* Two-Way Balance Sync Toggle */}
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '10px 14px',
+              borderRadius: 12,
+              background: form.syncBalances ? 'rgba(16,185,129,0.08)' : 'var(--shell-bg)',
+              border: form.syncBalances ? '1px solid rgba(16,185,129,0.3)' : '1px solid var(--card-border)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={Boolean(form.syncBalances)}
+              onChange={(e) => set('syncBalances', e.target.checked)}
+              style={{ width: 16, height: 16, accentColor: 'var(--positive, #10B981)', cursor: 'pointer' }}
+            />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
+                ⚡ Auto-update portfolio balances
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+                Automatically increment/decrement holding quantities &amp; cash wallet balances
+              </div>
+            </div>
+          </label>
 
           {/* Actions */}
           <div style={{

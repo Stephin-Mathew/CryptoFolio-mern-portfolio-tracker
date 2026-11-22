@@ -47,7 +47,7 @@ function formatDate(d) {
 
 const LIMIT = 50;
 
-export function TransactionsPage({ showToast }) {
+export function TransactionsPage({ showToast, onTransactionChange }) {
   const { wallets } = useWallets();
   const [transactions, setTransactions] = useState([]);
   const [total, setTotal]               = useState(0);
@@ -105,6 +105,7 @@ export function TransactionsPage({ showToast }) {
       setTotal((prev) => prev + 1);
       showToast?.('Transaction added', 'success');
     }
+    onTransactionChange?.();
   };
 
   const promptDelete = (tx) => {
@@ -119,6 +120,7 @@ export function TransactionsPage({ showToast }) {
       setTransactions((prev) => prev.filter((t) => t._id !== txToDelete._id));
       setTotal((prev) => prev - 1);
       showToast?.('Transaction deleted', 'success');
+      onTransactionChange?.();
     } catch (err) {
       showToast?.('Failed to delete transaction', 'error');
     }

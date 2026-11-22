@@ -578,7 +578,13 @@ function AppContent() {
                 <Route
                   path="/transactions"
                   element={
-                    <TransactionsPage showToast={showToast} />
+                    <TransactionsPage
+                      showToast={showToast}
+                      onTransactionChange={() => {
+                        fetchPortfolioData().catch(() => {});
+                        fetchWallets().catch(() => {});
+                      }}
+                    />
                   }
                 />
               </Routes>

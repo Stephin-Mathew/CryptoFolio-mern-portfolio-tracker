@@ -31,6 +31,7 @@ const transactionSchema = new mongoose.Schema(
     valueUSD:  { type: Number, default: null },
     tags:      { type: [String], default: [] },
     notes:     { type: String, trim: true, default: '' },
+    syncBalances: { type: Boolean, default: true },
     // Optional override timestamp for pinning to a specific chart point
     chartPinTs: { type: Date, default: null },
   },

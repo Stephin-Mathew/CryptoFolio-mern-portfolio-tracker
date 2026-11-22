@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { Transaction } from '../models/Transaction.js';
+import { syncTransactionBalances } from '../services/transactionSyncService.js';
 import mongoose from 'mongoose';
 
 const router = express.Router();
@@ -95,6 +96,7 @@ router.post('/', async (req, res) => {
       fromAsset, fromAmount, fromWalletId,
       toAsset, toAmount, toWalletId,
       priceUSD, valueUSD, tags, notes, chartPinTs,
+      syncBalances = true,
     } = req.body;
 
     if (!type) return res.status(400).json({ message: 'type is required' });
@@ -114,8 +116,18 @@ router.post('/', async (req, res) => {
       valueUSD:     valueUSD    != null ? Number(valueUSD)    : null,
       tags:         Array.isArray(tags) ? tags.map(t => t.trim()).filter(Boolean) : [],
       notes:        notes?.trim() || '',
+      syncBalances: Boolean(syncBalances),
       chartPinTs:   chartPinTs ? new Date(chartPinTs) : null,
     });
+
+    // Auto-update balances if enabled
+    if (tx.syncBalances) {
+      try {
+        await syncTransactionBalances(tx, userId, 'apply');
+      } catch (syncErr) {
+        console.warn('Balance sync warning on create:', syncErr.message);
+      }
+    }
 
     res.status(201).json({ transaction: tx });
   } catch (err) {
@@ -134,13 +146,33 @@ router.patch('/:id', async (req, res) => {
       return res.status(400).json({ message: 'Invalid transaction id' });
     }
 
+    const oldTx = await Transaction.findOne({ _id: id, userId });
+    if (!oldTx) return res.status(404).json({ message: 'Transaction not found' });
+
+    // Revert old transaction balances before applying updated ones
+    if (oldTx.syncBalances) {
+      try {
+        await syncTransactionBalances(oldTx, userId, 'revert');
+      } catch (revertErr) {
+        console.warn('Balance sync revert warning on patch:', revertErr.message);
+      }
+    }
+
     const tx = await Transaction.findOneAndUpdate(
       { _id: id, userId },
       { $set: req.body },
       { new: true, runValidators: true }
     );
 
-    if (!tx) return res.status(404).json({ message: 'Transaction not found' });
+    // Apply updated balances
+    if (tx.syncBalances) {
+      try {
+        await syncTransactionBalances(tx, userId, 'apply');
+      } catch (applyErr) {
+        console.warn('Balance sync apply warning on patch:', applyErr.message);
+      }
+    }
+
     res.json({ transaction: tx });
   } catch (err) {
     console.error('PATCH /transactions/:id error:', err);
@@ -160,6 +192,16 @@ router.delete('/:id', async (req, res) => {
 
     const tx = await Transaction.findOneAndDelete({ _id: id, userId });
     if (!tx) return res.status(404).json({ message: 'Transaction not found' });
+
+    // Automatically revert balances if this transaction had balance sync enabled
+    if (tx.syncBalances) {
+      try {
+        await syncTransactionBalances(tx, userId, 'revert');
+      } catch (syncErr) {
+        console.warn('Balance sync revert warning on delete:', syncErr.message);
+      }
+    }
+
     res.json({ message: 'Transaction deleted' });
   } catch (err) {
     console.error('DELETE /transactions/:id error:', err);
