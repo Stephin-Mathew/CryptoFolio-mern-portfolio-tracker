@@ -1,12 +1,13 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutGrid, List, Wallet, BarChart2 } from 'lucide-react';
+import { LayoutGrid, List, Wallet, BarChart2, ArrowRightLeft } from 'lucide-react';
 
 const TABS = [
   { to: '/', label: 'Overview', icon: LayoutGrid, end: true },
   { to: '/holdings', label: 'Holdings', icon: List, end: true },
   { to: '/wallets', label: 'Wallets', icon: Wallet, end: false },
   { to: '/analytics', label: 'Analytics', icon: BarChart2, end: true },
+  { to: '/transactions', label: 'Trades', icon: ArrowRightLeft, end: true },
 ];
 
 export function BottomTabBar() {

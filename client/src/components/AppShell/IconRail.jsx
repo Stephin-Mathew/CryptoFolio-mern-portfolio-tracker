@@ -9,6 +9,7 @@ import {
   LayoutGrid,
   Wallet,
   BarChart2,
+  ArrowRightLeft,
   Sparkles,
   Sun,
   Moon,
@@ -72,6 +73,7 @@ export function IconRail({
   const isHoldings = location.pathname === '/holdings';
   const isWallets = location.pathname.startsWith('/wallets');
   const isAnalytics = location.pathname === '/analytics';
+  const isTransactions = location.pathname === '/transactions';
 
   // Import dropdown
   const [importOpen, setImportOpen] = useState(false);
@@ -148,6 +150,17 @@ export function IconRail({
         aria-current={isAnalytics ? 'page' : undefined}
       >
         <BarChart2 size={20} strokeWidth={1.6} />
+      </NavLink>
+
+      {/* Nav: Transactions */}
+      <NavLink
+        to="/transactions"
+        className={({ isActive }) => `rib${isActive ? ' active' : ''}`}
+        title="Transactions"
+        aria-label="Transactions"
+        aria-current={isTransactions ? 'page' : undefined}
+      >
+        <ArrowRightLeft size={20} strokeWidth={1.6} />
       </NavLink>
 
       {/* Import with AI (opens dropdown) */}

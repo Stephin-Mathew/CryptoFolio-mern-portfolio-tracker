@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Brush, Legend,
 } from 'recharts';
 import { useCurrency } from '../context/CurrencyContext';
@@ -8,7 +9,7 @@ import { useTheme } from '../context/ThemeContext';
 import { formatAxisLabel } from '../utils/format';
 import { computePortfolio } from '../utils/portfolioMetrics';
 import api from '../api/axiosInstance';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, X, ExternalLink, ArrowRightLeft } from 'lucide-react';
 
 const RANGES = [
   { id: '24h', label: '1D' },
@@ -25,6 +26,24 @@ const ASSET_COLORS = {
   mutual_fund: '#F59E0B',
   cash:        '#94A3B8',
 };
+
+// Transaction marker colour by type
+const TX_COLORS = {
+  buy:          '#3DD68C',
+  deposit:      '#3DD68C',
+  transfer_in:  '#6366F1',
+  long:         '#3DD68C',
+  sell:         '#FF6B73',
+  withdrawal:   '#FF6B73',
+  transfer_out: '#FF6B73',
+  short:        '#FF6B73',
+  swap:         '#F59E0B',
+  note:         '#94A3B8',
+};
+
+function txMarkerColor(type) {
+  return TX_COLORS[type] || '#94A3B8';
+}
 
 function formatXTick(ts, rangeId) {
   if (!ts) return '';
@@ -59,6 +78,59 @@ function toDisplay(usd, currency, rates) {
   }
 }
 
+/** Custom dot rendered for transaction markers */
+function TransactionDot(props) {
+  const { cx, cy, payload, onSelectTx } = props;
+  if (!cx || !cy || !payload?._txList || payload._txList.length === 0) return null;
+
+  const txList = payload._txList;
+  const primaryColor = txMarkerColor(txList[0].type);
+  const count = txList.length;
+
+  return (
+    <g
+      style={{ cursor: 'pointer', pointerEvents: 'all' }}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (onSelectTx) onSelectTx(txList);
+      }}
+    >
+      {/* Outer pulse glow */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={9}
+        fill={primaryColor}
+        fillOpacity={0.25}
+        stroke={primaryColor}
+        strokeWidth={1}
+      />
+      {/* Center dot */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={5}
+        fill={primaryColor}
+        stroke="#ffffff"
+        strokeWidth={2}
+      />
+      {count > 1 && (
+        <text
+          x={cx}
+          y={cy - 9}
+          textAnchor="middle"
+          fontSize="9"
+          fontWeight="bold"
+          fill="#ffffff"
+          style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)', pointerEvents: 'none' }}
+        >
+          {count}
+        </text>
+      )}
+    </g>
+  );
+}
+
 /** Custom tooltip rendered by Recharts */
 function ChartTooltip({ active, payload, fmt, fmtDelta, startUSD, rangeId }) {
   if (!active || !payload || !payload.length) return null;
@@ -82,7 +154,8 @@ function ChartTooltip({ active, payload, fmt, fmtDelta, startUSD, rangeId }) {
       padding: '10px 14px',
       fontSize: 12,
       lineHeight: 1.6,
-      minWidth: 190,
+      minWidth: 200,
+      maxWidth: 280,
       color: '#fff',
       boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
     }}>
@@ -133,6 +206,52 @@ function ChartTooltip({ active, payload, fmt, fmtDelta, startUSD, rangeId }) {
           )}
         </div>
       )}
+
+      {/* Highlighted transactions on this point */}
+      {pt._txList && pt._txList.length > 0 && (
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: 8, marginTop: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#FCD34D', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span>⚡ {pt._txList.length} Transaction{pt._txList.length > 1 ? 's' : ''} here</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {pt._txList.map((tx, idx) => {
+              const color = txMarkerColor(tx.type);
+              const fromStr = tx.fromAmount != null ? `${tx.fromAmount} ${tx.fromAsset || ''}` : tx.fromAsset;
+              const toStr = tx.toAmount != null ? `${tx.toAmount} ${tx.toAsset || ''}` : tx.toAsset;
+              return (
+                <div key={tx._id || idx} style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  borderRadius: 6,
+                  padding: '5px 8px',
+                  fontSize: 11,
+                  borderLeft: `3px solid ${color}`,
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontWeight: 700, color, textTransform: 'capitalize' }}>
+                      {tx.type.replace('_', ' ')}
+                    </span>
+                    {tx.valueUSD != null && (
+                      <span style={{ color: '#9CA3AF', fontSize: 10 }}>${Number(tx.valueUSD).toLocaleString()}</span>
+                    )}
+                  </div>
+                  {(fromStr || toStr) && (
+                    <div style={{ color: '#E5E7EB', marginTop: 2, fontSize: 11, fontWeight: 500 }}>
+                      {fromStr && <span>{fromStr.trim()}</span>}
+                      {fromStr && toStr && <span style={{ color: '#9CA3AF', margin: '0 4px' }}>→</span>}
+                      {toStr && <span>{toStr.trim()}</span>}
+                    </div>
+                  )}
+                  {tx.notes && (
+                    <div style={{ color: '#9CA3AF', fontSize: 10, marginTop: 2, fontStyle: 'italic', wordBreak: 'break-word' }}>
+                      {tx.notes}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -146,6 +265,11 @@ export function PortfolioValueChart({ holdings = [], prices = {}, refreshKey = 0
   const [historyData, setHistoryData] = useState(null);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState(null);
+
+  // Transaction markers state
+  const [markers, setMarkers]                 = useState([]);
+  const [showTxDots, setShowTxDots]           = useState(true);
+  const [selectedTxList, setSelectedTxList]   = useState(null);
 
   const fetchHistory = useCallback(async (id) => {
     setLoading(true);
@@ -161,9 +285,19 @@ export function PortfolioValueChart({ holdings = [], prices = {}, refreshKey = 0
     }
   }, []);
 
+  const fetchMarkers = useCallback(async (id) => {
+    try {
+      const res = await api.get(`/transactions/chart-markers?timeframe=${id}`);
+      setMarkers(res.data.markers || []);
+    } catch (err) {
+      console.warn('Failed to load transaction markers for chart:', err.message);
+    }
+  }, []);
+
   useEffect(() => {
     fetchHistory(rangeId);
-  }, [rangeId, refreshKey, fetchHistory]);
+    fetchMarkers(rangeId);
+  }, [rangeId, refreshKey, fetchHistory, fetchMarkers]);
 
   const rawPoints = historyData?.dataPoints || [];
   const summary   = historyData?.summary || {};
@@ -197,13 +331,40 @@ export function PortfolioValueChart({ holdings = [], prices = {}, refreshKey = 0
     return [];
   }, [rawPoints, holdings, prices]);
 
-  // Build chart data: convert all USD values to display currency
+  // Snap each marker to the nearest point on the curve
+  const txByPointIndex = useMemo(() => {
+    if (!markers.length || !effectivePoints.length) return {};
+    const map = {};
+
+    markers.forEach((m) => {
+      const mTime = new Date(m.chartPinTs || m.date).getTime();
+      if (isNaN(mTime)) return;
+
+      let closestIdx = 0;
+      let minDiff = Infinity;
+      effectivePoints.forEach((p, idx) => {
+        const pTime = new Date(p.timestamp).getTime();
+        const diff = Math.abs(pTime - mTime);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestIdx = idx;
+        }
+      });
+
+      if (!map[closestIdx]) map[closestIdx] = [];
+      map[closestIdx].push(m);
+    });
+
+    return map;
+  }, [markers, effectivePoints]);
+
+  // Build chart data: convert all USD values to display currency and attach markers
   const chartData = useMemo(() => {
     if (!effectivePoints.length) return [];
 
     const startUSD = effectivePoints[0]?.totalValue ?? 0;
 
-    return effectivePoints.map((p) => {
+    return effectivePoints.map((p, idx) => {
       const totalUSD  = p.totalValue      ?? 0;
       const cryptoUSD = p.cryptoValue     ?? 0;
       const stockUSD  = p.stockValue      ?? 0;
@@ -220,6 +381,7 @@ export function PortfolioValueChart({ holdings = [], prices = {}, refreshKey = 0
         _stock: stockUSD,
         _fund: fundUSD,
         _cash: cashUSD,
+        _txList: txByPointIndex[idx] || [],
         value: viewMode === 'pct' ? pct : disp(totalUSD),
         crypto: disp(cryptoUSD),
         stock: disp(stockUSD),
@@ -227,7 +389,7 @@ export function PortfolioValueChart({ holdings = [], prices = {}, refreshKey = 0
         cash: disp(cashUSD),
       };
     });
-  }, [effectivePoints, currency, rates, viewMode]);
+  }, [effectivePoints, currency, rates, viewMode, txByPointIndex]);
 
   const startUSD   = effectivePoints[0]?.totalValue ?? 0;
   const currentUSD = effectivePoints[effectivePoints.length - 1]?.totalValue ?? 0;
@@ -308,29 +470,164 @@ export function PortfolioValueChart({ holdings = [], prices = {}, refreshKey = 0
             )}
           </div>
 
-          {/* View mode toggle */}
-          <div className="seg seg-sm" role="group" aria-label="Chart view mode" style={{ padding: 2 }}>
-            {[
-              { id: 'total',   label: 'Total' },
-              { id: 'stacked', label: 'Breakdown' },
-              { id: 'pct',     label: '% Return' },
-            ].map((m) => (
-              <button
-                key={m.id}
-                className={`seg-btn${viewMode === m.id ? ' active' : ''}`}
-                aria-pressed={viewMode === m.id}
-                onClick={() => setViewMode(m.id)}
-                style={{ fontSize: 11, padding: '0 8px', minHeight: 26 }}
-              >
-                {m.label}
-              </button>
-            ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Trades toggle chip */}
+            <button
+              type="button"
+              onClick={() => setShowTxDots((p) => !p)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '4px 10px',
+                borderRadius: 8,
+                border: showTxDots ? '1px solid var(--accent, #6366F1)' : '1px solid var(--card-border)',
+                background: showTxDots ? 'rgba(99,102,241,0.14)' : 'var(--shell-bg)',
+                color: showTxDots ? 'var(--text-primary)' : 'var(--text-muted)',
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                transition: 'all 0.15s ease',
+              }}
+              title="Toggle transaction dots on chart"
+            >
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: showTxDots ? '#3DD68C' : '#94A3B8',
+                }}
+              />
+              <span>Trades ({markers.length})</span>
+            </button>
+
+            {/* View mode toggle */}
+            <div className="seg seg-sm" role="group" aria-label="Chart view mode" style={{ padding: 2 }}>
+              {[
+                { id: 'total',   label: 'Total' },
+                { id: 'stacked', label: 'Breakdown' },
+                { id: 'pct',     label: '% Return' },
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  className={`seg-btn${viewMode === m.id ? ' active' : ''}`}
+                  aria-pressed={viewMode === m.id}
+                  onClick={() => setViewMode(m.id)}
+                  style={{ fontSize: 11, padding: '0 8px', minHeight: 26 }}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
       {/* Chart area */}
       <div style={{ width: '100%', height: 320, minHeight: 300, position: 'relative' }}>
+        {/* Floating Transaction Details Popover if dot is clicked */}
+        {selectedTxList && selectedTxList.length > 0 && (
+          <div
+            className="animate-fadeIn"
+            style={{
+              position: 'absolute',
+              top: 12,
+              right: 12,
+              zIndex: 30,
+              background: 'var(--panel-bg)',
+              border: '1px solid var(--card-border)',
+              borderRadius: 14,
+              boxShadow: '0 12px 36px rgba(0,0,0,0.3)',
+              padding: 14,
+              width: 280,
+              maxWidth: '90%',
+              maxHeight: 290,
+              overflowY: 'auto',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <ArrowRightLeft size={13} style={{ color: 'var(--accent, #6366F1)' }} />
+                <span>Transaction Details</span>
+              </div>
+              <button
+                onClick={() => setSelectedTxList(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 2 }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {selectedTxList.map((tx) => {
+                const color = txMarkerColor(tx.type);
+                const fromStr = tx.fromAmount != null ? `${tx.fromAmount} ${tx.fromAsset || ''}` : tx.fromAsset;
+                const toStr = tx.toAmount != null ? `${tx.toAmount} ${tx.toAsset || ''}` : tx.toAsset;
+                const dateStr = new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                return (
+                  <div
+                    key={tx._id}
+                    style={{
+                      background: 'var(--shell-bg)',
+                      border: '1px solid var(--card-border)',
+                      borderRadius: 10,
+                      padding: 10,
+                      borderLeft: `3px solid ${color}`,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase' }}>
+                        {tx.type.replace('_', ' ')}
+                      </span>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{dateStr}</span>
+                    </div>
+
+                    {(fromStr || toStr) && (
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', margin: '4px 0' }}>
+                        {fromStr && <span>{fromStr.trim()}</span>}
+                        {fromStr && toStr && <span style={{ color: 'var(--text-muted)', margin: '0 6px' }}>→</span>}
+                        {toStr && <span>{toStr.trim()}</span>}
+                      </div>
+                    )}
+
+                    {tx.valueUSD != null && (
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                        Value: ${Number(tx.valueUSD).toLocaleString()}
+                      </div>
+                    )}
+
+                    {tx.notes && (
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, fontStyle: 'italic', wordBreak: 'break-word' }}>
+                        {tx.notes}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ marginTop: 10, textAlign: 'right' }}>
+              <Link
+                to="/transactions"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontSize: 11,
+                  color: 'var(--accent, #6366F1)',
+                  textDecoration: 'none',
+                  fontWeight: 600,
+                }}
+              >
+                <span>All Transactions</span>
+                <ExternalLink size={11} />
+              </Link>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 8, color: 'var(--text-muted)', fontSize: 13 }}>
             <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
@@ -346,7 +643,7 @@ export function PortfolioValueChart({ holdings = [], prices = {}, refreshKey = 0
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={320}>
-            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: showBrush ? 32 : 10 }}>
+            <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: showBrush ? 32 : 10 }}>
               <defs>
                 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor={fillColor} stopOpacity={0.25} />
@@ -435,6 +732,20 @@ export function PortfolioValueChart({ holdings = [], prices = {}, refreshKey = 0
                   <Area type="monotone" dataKey="mutual_fund" stackId="1" stroke={ASSET_COLORS.mutual_fund} fill="url(#fundGrad)"   strokeWidth={1.5} dot={false} />
                   <Area type="monotone" dataKey="stock"       stackId="1" stroke={ASSET_COLORS.stock}       fill="url(#stockGrad)"  strokeWidth={1.5} dot={false} />
                   <Area type="monotone" dataKey="crypto"      stackId="1" stroke={ASSET_COLORS.crypto}      fill="url(#cryptoGrad)" strokeWidth={1.5} dot={false} />
+
+                  {/* Marker overlay dots on stacked mode */}
+                  {showTxDots && (
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="transparent"
+                      fill="none"
+                      legendType="none"
+                      tooltipType="none"
+                      dot={(props) => <TransactionDot {...props} onSelectTx={setSelectedTxList} />}
+                      activeDot={false}
+                    />
+                  )}
                 </>
               ) : (
                 /* Total / % mode */
@@ -444,7 +755,7 @@ export function PortfolioValueChart({ holdings = [], prices = {}, refreshKey = 0
                   stroke={viewMode === 'pct' ? (isPositive ? positiveColor : negativeColor) : lineColor}
                   strokeWidth={2}
                   fill={`url(#${gradientId})`}
-                  dot={false}
+                  dot={showTxDots ? (props) => <TransactionDot {...props} onSelectTx={setSelectedTxList} /> : false}
                   activeDot={{ r: 5, strokeWidth: 2, stroke: isDark ? '#fff' : '#000' }}
                 />
               )}
@@ -459,7 +770,7 @@ export function PortfolioValueChart({ holdings = [], prices = {}, refreshKey = 0
                   tickFormatter={xTickFmt}
                 />
               )}
-            </AreaChart>
+            </ComposedChart>
           </ResponsiveContainer>
         )}
       </div>
