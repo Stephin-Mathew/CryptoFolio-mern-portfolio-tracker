@@ -236,9 +236,6 @@ export function DailyPnlBarCard({ holdings = [], prices = {}, metrics, loading }
   const negHoverColor = isDark ? '#FFA0A6' : '#DC2626';
   const negBgSubtle = isDark ? 'rgba(255, 107, 115, 0.16)' : '#FCE8E9';
 
-  const trackBg = isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.025)';
-  const trackHoverBg = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)';
-
   const activePnl = selectedItem ? selectedItem.pnl : 0;
   const isPositivePnl = activePnl >= 0;
   const fromLastDay = selectedItem ? selectedItem.fromLastDayPct : 0;
@@ -257,7 +254,7 @@ export function DailyPnlBarCard({ holdings = [], prices = {}, metrics, loading }
         flexDirection: 'column',
         justifyContent: 'space-between',
         height: '100%',
-        minHeight: 330,
+        minHeight: 340,
         padding: 'clamp(14px, 3.5vw, 20px) clamp(14px, 3.5vw, 20px) 14px',
         boxSizing: 'border-box',
         position: 'relative',
@@ -462,26 +459,27 @@ export function DailyPnlBarCard({ holdings = [], prices = {}, metrics, loading }
       {/* ── Bi-directional Rounded Bar Chart with Zero Baseline ── */}
       <div
         style={{
-          flex: 1,
-          minHeight: 145,
-          maxHeight: 220,
+          flex: '1 1 auto',
+          minHeight: 180,
           position: 'relative',
           display: 'flex',
           flexDirection: 'column',
+          justifyContent: 'flex-end',
           width: '100%',
-          marginTop: 4,
+          marginTop: 6,
         }}
       >
         {/* The Bars Area */}
         <div
           style={{
             position: 'relative',
-            flex: 1,
+            flex: '1 1 auto',
+            height: 140,
             minHeight: 130,
             width: '100%',
             display: 'flex',
             alignItems: 'stretch',
-            gap: 'clamp(4px, 1.8vw, 8px)',
+            gap: 'clamp(3px, 1vw, 6px)',
           }}
         >
           {/* Subtle Zero Baseline ($0 Line) spanning across */}
@@ -553,6 +551,7 @@ export function DailyPnlBarCard({ holdings = [], prices = {}, metrics, loading }
                   flex: 1,
                   minWidth: 0,
                   height: '100%',
+                  minHeight: 130,
                   position: 'relative',
                   cursor: 'pointer',
                   display: 'flex',
@@ -560,27 +559,15 @@ export function DailyPnlBarCard({ holdings = [], prices = {}, metrics, loading }
                   touchAction: 'manipulation',
                 }}
               >
-                {/* Column background track */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    borderRadius: 10,
-                    background: isSelected ? trackHoverBg : trackBg,
-                    transition: 'background 0.15s ease',
-                  }}
-                />
-
                 {/* The Diverging Rounded Bar (Upwards if positive, Downwards if negative) */}
                 {isPos ? (
                   <div
                     style={{
                       position: 'absolute',
-                      left: 3,
-                      right: 3,
+                      left: 1,
+                      right: 1,
+                      maxWidth: 64,
+                      margin: '0 auto',
                       bottom: `${zeroFromBottomPct}%`,
                       height: `${barHeightPct}%`,
                       background: barColor,
@@ -595,8 +582,10 @@ export function DailyPnlBarCard({ holdings = [], prices = {}, metrics, loading }
                   <div
                     style={{
                       position: 'absolute',
-                      left: 3,
-                      right: 3,
+                      left: 1,
+                      right: 1,
+                      maxWidth: 64,
+                      margin: '0 auto',
                       top: `${100 - zeroFromBottomPct}%`,
                       height: `${barHeightPct}%`,
                       background: barColor,
@@ -618,7 +607,7 @@ export function DailyPnlBarCard({ holdings = [], prices = {}, metrics, loading }
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 'clamp(4px, 1.8vw, 8px)',
+            gap: 'clamp(3px, 1vw, 6px)',
             width: '100%',
             marginTop: 8,
           }}

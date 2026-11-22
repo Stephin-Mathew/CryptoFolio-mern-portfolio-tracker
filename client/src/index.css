@@ -998,7 +998,7 @@ html.dark [class*="dark:bg-[#0d121f]"] {
   }
 
   .r1-pnl-card {
-    min-height: 310px !important;
+    min-height: 350px !important;
     height: auto !important;
   }
 
