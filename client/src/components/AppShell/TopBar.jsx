@@ -58,6 +58,7 @@ export function TopBar({
       return 'Portfolio';
     }
     if (location.pathname === '/analytics') return 'Analytics';
+    if (location.pathname === '/transactions') return 'Transactions';
     if (location.pathname.startsWith('/dev')) return 'Developer Logs';
     return 'Portfolio';
   };

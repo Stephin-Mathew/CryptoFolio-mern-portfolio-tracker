@@ -14,6 +14,7 @@ import { WalletsPage } from './pages/WalletsPage';
 import { WalletDetailPage } from './pages/WalletDetailPage';
 import { CashWalletPage } from './pages/CashWalletPage';
 import { DevPriceLogsPage } from './pages/DevPriceLogsPage';
+import { TransactionsPage } from './pages/TransactionsPage';
 import { HoldingFormModal } from './components/HoldingFormModal';
 import { WalletFormModal } from './components/WalletFormModal';
 import { ScreenshotUploadModal } from './components/ScreenshotUploadModal';
@@ -25,7 +26,7 @@ import { LoadingScreen } from './components/LoadingScreen';
 import { sortWalletsByValue } from './utils/walletUtils';
 
 // Routes where the tab bar (Overview | Holdings | Wallets) is shown
-const TAB_BAR_ROUTES = ['/', '/holdings', '/wallets'];
+const TAB_BAR_ROUTES = ['/', '/holdings', '/wallets', '/transactions'];
 
 function AppContent() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -53,7 +54,7 @@ function AppContent() {
       const next = !prev;
       try {
         localStorage.setItem('apex_sidebar_collapsed', String(next));
-      } catch (e) {}
+      } catch (e) { }
       return next;
     });
   };
@@ -183,8 +184,8 @@ function AppContent() {
         setPrices((prev) => ({ ...prev, [symbol.toUpperCase()]: res.data.price }));
       }
       showToast(res.data.message || `Price updated for ${symbol}`, 'success');
-      fetchPortfolioData().catch(() => {});
-      fetchWallets().catch(() => {});
+      fetchPortfolioData().catch(() => { });
+      fetchWallets().catch(() => { });
     } catch (err) {
       console.error('Failed to update price override:', err);
       showToast(err.response?.data?.message || 'Failed to update price', 'error');
@@ -199,8 +200,8 @@ function AppContent() {
         setPrices((prev) => ({ ...prev, [symbol.toUpperCase()]: res.data.price }));
       }
       showToast(res.data.message || `Reset ${symbol} to live market price`, 'success');
-      fetchPortfolioData().catch(() => {});
-      fetchWallets().catch(() => {});
+      fetchPortfolioData().catch(() => { });
+      fetchWallets().catch(() => { });
     } catch (err) {
       console.error('Failed to reset price override:', err);
       showToast(err.response?.data?.message || 'Failed to reset price', 'error');
@@ -215,7 +216,7 @@ function AppContent() {
         setPrices((prev) => ({ ...prev, [symbol.toUpperCase()]: res.data.price }));
       }
       showToast(res.data.message || `Logo updated for ${symbol}`, 'success');
-      fetchPortfolioData().catch(() => {});
+      fetchPortfolioData().catch(() => { });
     } catch (err) {
       console.error('Failed to update logo override:', err);
       showToast(err.response?.data?.message || 'Failed to update logo', 'error');
@@ -230,7 +231,7 @@ function AppContent() {
         setPrices((prev) => ({ ...prev, [symbol.toUpperCase()]: res.data.price }));
       }
       showToast(res.data.message || `Reset logo for ${symbol} to default`, 'success');
-      fetchPortfolioData().catch(() => {});
+      fetchPortfolioData().catch(() => { });
     } catch (err) {
       console.error('Failed to reset logo override:', err);
       showToast(err.response?.data?.message || 'Failed to reset logo', 'error');
@@ -248,8 +249,8 @@ function AppContent() {
       setHoldings([res.data.holding, ...holdings]);
       showToast('Holding added to portfolio', 'success');
     }
-    fetchPortfolioData().catch(() => {});
-    fetchWallets().catch(() => {});
+    fetchPortfolioData().catch(() => { });
+    fetchWallets().catch(() => { });
   };
 
   const handleSaveWallet = async (walletData) => {
@@ -277,9 +278,9 @@ function AppContent() {
         setRowStatuses((prev) => { const copy = { ...prev }; delete copy[id]; return copy; });
       }, 2500);
       if (updatedFields.symbol && updatedFields.symbol !== originalHolding.symbol) {
-        fetchPortfolioData().catch(() => {});
+        fetchPortfolioData().catch(() => { });
       }
-      fetchWallets().catch(() => {});
+      fetchWallets().catch(() => { });
     } catch (err) {
       console.error('Optimistic edit failed, rolling back:', err);
       setHoldings((prev) => prev.map((h) => (h._id === id ? originalHolding : h)));
@@ -309,18 +310,18 @@ function AppContent() {
       await api.delete(`/holdings/${deleteTarget.id}`);
       setHoldings((prev) => prev.filter((h) => h._id !== deleteTarget.id));
       showToast('Holding deleted from portfolio', 'success');
-      fetchWallets().catch(() => {});
+      fetchWallets().catch(() => { });
     } else if (deleteTarget.type === 'wallet_holdings') {
       const res = await api.delete(`/holdings/wallet/${deleteTarget.id}`);
       setHoldings((prev) => prev.filter((h) => !h.walletId || h.walletId.toString() !== deleteTarget.id.toString()));
       showToast(res.data.message || `All holdings cleared from ${deleteTarget.walletName}`, 'success');
-      fetchWallets().catch(() => {});
-      fetchPortfolioData().catch(() => {});
+      fetchWallets().catch(() => { });
+      fetchPortfolioData().catch(() => { });
     } else if (deleteTarget.type === 'wallet') {
       await deleteWallet(deleteTarget.id);
       setHoldings((prev) => prev.filter((h) => !h.walletId || h.walletId.toString() !== deleteTarget.id.toString()));
       showToast('Wallet and all associated assets deleted successfully', 'success');
-      fetchPortfolioData().catch(() => {});
+      fetchPortfolioData().catch(() => { });
       if (location.pathname === `/wallets/${deleteTarget.id}`) navigate('/wallets');
     }
   };
@@ -344,8 +345,8 @@ function AppContent() {
   const handleBatchSaveSuccess = (newHoldings) => {
     setHoldings([...newHoldings, ...holdings]);
     showToast(`Successfully added ${newHoldings.length} holdings from screenshot extraction`, 'success');
-    fetchPortfolioData().catch(() => {});
-    fetchWallets().catch(() => {});
+    fetchPortfolioData().catch(() => { });
+    fetchWallets().catch(() => { });
   };
 
   // Common modal openers (used by both rail and tab bar)
@@ -375,7 +376,7 @@ function AppContent() {
     return <LoadingScreen />;
   }
 
-  const isTabBarRoute = TAB_BAR_ROUTES.includes(location.pathname) || location.pathname === '/holdings';
+  const isTabBarRoute = TAB_BAR_ROUTES.includes(location.pathname) || location.pathname === '/holdings' || location.pathname === '/transactions';
   const showRail = isAuthenticated;
 
   return (
@@ -543,8 +544,8 @@ function AppContent() {
                           onDeleteWallet={promptDeleteWallet}
                           onClearWalletHoldings={promptClearWalletHoldings}
                           showToast={showToast}
-                          onHoldingAdded={(h) => { setHoldings((prev) => [h, ...prev]); fetchPortfolioData().catch(() => {}); fetchWallets().catch(() => {}); }}
-                          onHoldingUpdated={(h) => { setHoldings((prev) => prev.map((x) => x._id === h._id ? h : x)); fetchWallets().catch(() => {}); }}
+                          onHoldingAdded={(h) => { setHoldings((prev) => [h, ...prev]); fetchPortfolioData().catch(() => { }); fetchWallets().catch(() => { }); }}
+                          onHoldingUpdated={(h) => { setHoldings((prev) => prev.map((x) => x._id === h._id ? h : x)); fetchWallets().catch(() => { }); }}
                         />
                       );
                     }
@@ -572,6 +573,19 @@ function AppContent() {
                 <Route
                   path="/dev/price-logs"
                   element={<DevPriceLogsPage />}
+                />
+
+                <Route
+                  path="/transactions"
+                  element={
+                    <TransactionsPage
+                      showToast={showToast}
+                      onTransactionChange={() => {
+                        fetchPortfolioData().catch(() => {});
+                        fetchWallets().catch(() => {});
+                      }}
+                    />
+                  }
                 />
               </Routes>
             </div>
