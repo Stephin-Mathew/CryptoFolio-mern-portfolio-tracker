@@ -16,7 +16,6 @@ import {
   ChevronRight,
   Plus,
   PanelLeft,
-  Terminal,
 } from 'lucide-react';
 
 // Logo tile: 40x40 dark square with rotated white square inside
@@ -73,7 +72,6 @@ export function IconRail({
   const isHoldings = location.pathname === '/holdings';
   const isWallets = location.pathname.startsWith('/wallets');
   const isAnalytics = location.pathname === '/analytics';
-  const isDev = location.pathname.startsWith('/dev');
 
   // Import dropdown
   const [importOpen, setImportOpen] = useState(false);
@@ -150,17 +148,6 @@ export function IconRail({
         aria-current={isAnalytics ? 'page' : undefined}
       >
         <BarChart2 size={20} strokeWidth={1.6} />
-      </NavLink>
-
-      {/* Nav: Dev Price Logs */}
-      <NavLink
-        to="/dev/price-logs"
-        className={({ isActive }) => `rib${isActive || isDev ? ' active' : ''}`}
-        title="Dev — Price Engine Logs"
-        aria-label="Dev — Price Engine Logs"
-        aria-current={isDev ? 'page' : undefined}
-      >
-        <Terminal size={20} strokeWidth={1.6} />
       </NavLink>
 
       {/* Import with AI (opens dropdown) */}
