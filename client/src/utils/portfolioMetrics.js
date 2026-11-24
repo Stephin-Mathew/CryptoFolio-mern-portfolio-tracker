@@ -60,6 +60,24 @@ export function getHoldingPriceUSD(holding, prices, inrRate = 95.7) {
 export function computePortfolio(holdings = [], prices = {}, wallets = []) {
   const inrRate = Number(prices.INR?.price || prices.INR?.rate || 95.7);
 
+  // Determine if today is a weekend (markets always closed Sat/Sun)
+  const todayDow = new Date().getDay(); // 0 = Sun, 6 = Sat
+  const isWeekend = todayDow === 0 || todayDow === 6;
+
+  // Helper: determine if an asset's market is currently closed
+  const getIsMarketClosed = (s) => {
+    if (s.assetType !== 'stock') return false;
+    const marketState = prices[s.symbol]?.marketState ?? null;
+    return (
+      (marketState !== null &&
+        marketState !== 'REGULAR' &&
+        marketState !== 'PRE' &&
+        marketState !== 'POST') ||
+      (marketState === null && isWeekend) ||
+      isWeekend
+    );
+  };
+
   let totalValue = 0;
   let total24hPnL = 0;
   let total7dPnL = 0;
@@ -145,6 +163,7 @@ export function computePortfolio(holdings = [], prices = {}, wallets = []) {
       const roiPct = (row.hasCostBasis && row.costUsd > 0) ? (unrealizedPnlUsd / row.costUsd) * 100 : 0;
       return {
         ...row,
+        isMarketClosed: getIsMarketClosed(row),
         unrealizedPnlUsd,
         roiPct,
         weightPct: totalValue > 0 ? (row.valueUsd / totalValue) * 100 : 0,
@@ -178,42 +197,33 @@ export function computePortfolio(holdings = [], prices = {}, wallets = []) {
   // close, not vs the buy price). For stocks the market state tells us whether trading is live.
   // Stocks on weekends / market-closed hours still show last-session change but are flagged so
   // the UI can display "Last Session" instead of "Today".
+
+  // Top movers — map every non-cash holding with non-zero 24h change
   const moversRaw = perSymbol
     .filter((s) => s.change24h !== 0 && s.assetType !== 'cash')
-    .map((s) => {
-      const entry = prices[s.symbol];
-      // Stocks: derive daily change from prevDayClose when available for accuracy;
-      // otherwise fall back to the cached change24h from the API.
-      let dailyChange = s.change24h;
-      if (s.assetType === 'stock' && entry?.prevDayClose && entry.prevDayClose > 0 && s.price > 0) {
-        dailyChange = ((s.price - entry.prevDayClose) / entry.prevDayClose) * 100;
-      }
+    .map((s) => ({
+      symbol: s.symbol,
+      name: s.name,
+      change24h: Number((s.change24h || 0).toFixed(4)),
+      assetType: s.assetType,
+      isMarketClosed: s.isMarketClosed,
+    }));
 
-      // A stock is "market closed" if its marketState is not REGULAR (or PRE/POST for extended hours).
-      // Crypto trades 24/7 so it is never market-closed.
-      const marketState = entry?.marketState ?? null;
-      const isMarketClosed =
-        s.assetType === 'stock' &&
-        marketState !== null &&
-        marketState !== 'REGULAR' &&
-        marketState !== 'PRE' &&
-        marketState !== 'POST';
+  // On weekends or outside trading hours, closed stocks did NOT move today.
+  // Active movers: only assets whose markets are actively open/trading today (e.g. crypto).
+  const activeMovers = moversRaw.filter((m) => !m.isMarketClosed);
 
-      return {
-        symbol: s.symbol,
-        name: s.name,
-        change24h: Number(dailyChange.toFixed(4)),
-        assetType: s.assetType,
-        isMarketClosed,
-      };
-    });
+  // If active 24/7 movers exist (e.g. crypto on weekends), default movers MUST only show
+  // assets that traded today. Closed stocks are excluded from today's movers!
+  // If NO assets are open (e.g. pure stock portfolio on weekend), fall back to moversRaw.
+  const targetMovers = activeMovers.length > 0 ? activeMovers : moversRaw;
 
-  const gainers = moversRaw
+  const gainers = targetMovers
     .filter((m) => m.change24h > 0)
     .sort((a, b) => b.change24h - a.change24h)
     .slice(0, 6);
 
-  const losers = moversRaw
+  const losers = targetMovers
     .filter((m) => m.change24h < 0)
     .sort((a, b) => a.change24h - b.change24h)
     .slice(0, 6);
@@ -227,15 +237,20 @@ export function computePortfolio(holdings = [], prices = {}, wallets = []) {
   const stockFundPct = totalStockCost > 0 ? (stockFundPnL / totalStockCost) * 100 : 0;
 
   // Dollar Movers (actual currency gainers and losers)
-  const dollarGainers24h = perSymbol
+  const activeDollarSymbols = perSymbol.filter((s) => !getIsMarketClosed(s));
+  const targetDollarSymbols = activeDollarSymbols.length > 0 ? activeDollarSymbols : perSymbol;
+
+  const dollarGainers24h = targetDollarSymbols
     .filter((s) => (s.pnl24hUsd || 0) > 0.01 && s.assetType !== 'cash')
     .sort((a, b) => b.pnl24hUsd - a.pnl24hUsd)
-    .slice(0, 5);
+    .slice(0, 5)
+    .map((s) => ({ ...s, isMarketClosed: getIsMarketClosed(s) }));
 
-  const dollarLosers24h = perSymbol
+  const dollarLosers24h = targetDollarSymbols
     .filter((s) => (s.pnl24hUsd || 0) < -0.01 && s.assetType !== 'cash')
     .sort((a, b) => a.pnl24hUsd - b.pnl24hUsd)
-    .slice(0, 5);
+    .slice(0, 5)
+    .map((s) => ({ ...s, isMarketClosed: getIsMarketClosed(s) }));
 
   const dollarGainers7d = perSymbol
     .filter((s) => (s.pnl7dUsd || 0) > 0.01 && s.assetType !== 'cash')

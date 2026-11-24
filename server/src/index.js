@@ -12,7 +12,7 @@ import portfolioRoutes from './routes/portfolio.js';
 import extractRoutes from './routes/extract.js';
 import devLogsRoutes from './routes/devLogs.js';
 import transactionsRoutes from './routes/transactions.js';
-import { initPriceCron } from './services/priceService.js';
+import { initPriceCron, sanitizeStockCache } from './services/priceService.js';
 import { initSnapshotCron } from './services/historyService.js';
 
 const app = express();
@@ -73,6 +73,8 @@ app.use((err, req, res, next) => {
 // Start Express server after DB connection
 const startServer = async () => {
   await connectDB();
+  // Clean up any corrupt stock change24h values before starting the cron
+  await sanitizeStockCache();
   initPriceCron();
   initSnapshotCron();
   
