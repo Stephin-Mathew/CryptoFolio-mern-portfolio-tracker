@@ -172,18 +172,43 @@ const fetchYahooPrice = async (ticker) => {
       };
     }
 
-    // previousClose is the last completed trading-day close price
-    const prevDayClose = meta.chartPreviousClose ?? meta.previousClose ?? null;
-    const change24h = prevDayClose && prevDayClose > 0 ? ((currentPrice - prevDayClose) / prevDayClose) * 100 : 0;
-
-    // Yahoo Finance market state: 'REGULAR' | 'POST' | 'PRE' | 'CLOSED'
-    // On weekends both US and Indian markets are CLOSED
-    const marketState = meta.marketState ?? null;
-
-    // Compute 7d and 30d changes from historical closes
+    // Extract historical closes from the chart data
     const closes = result.indicators?.quote?.[0]?.close ?? [];
     const validCloses = closes.filter((c) => c !== null && c !== undefined && c > 0);
 
+    // previousClose is the last completed trading-day close price.
+    // NOTE: meta.chartPreviousClose is the close 1 month ago (start of chart range), NOT 1 day ago!
+    // Yahoo meta.regularMarketChangePercent is the real official 1-day / last-session change percent.
+    let change24h = 0;
+    if (meta.regularMarketChangePercent != null && !isNaN(meta.regularMarketChangePercent)) {
+      change24h = Number(meta.regularMarketChangePercent);
+    } else if (validCloses.length >= 2) {
+      const prevClose = validCloses[validCloses.length - 2];
+      change24h = prevClose > 0 ? ((currentPrice - prevClose) / prevClose) * 100 : 0;
+    } else if (meta.previousClose && meta.previousClose > 0) {
+      change24h = ((currentPrice - meta.previousClose) / meta.previousClose) * 100;
+    }
+
+    let prevDayClose = null;
+    if (meta.previousClose) {
+      prevDayClose = Number(meta.previousClose);
+    } else if (validCloses.length >= 2) {
+      prevDayClose = validCloses[validCloses.length - 2];
+    } else if (change24h !== 0) {
+      prevDayClose = currentPrice / (1 + change24h / 100);
+    }
+
+    // Yahoo Finance market state: 'REGULAR' | 'POST' | 'PRE' | 'CLOSED'
+    // Determine whether the market is actively open right now
+    const now = new Date();
+    const utcDay = now.getUTCDay();
+    const isWeekend = utcDay === 0 || utcDay === 6;
+    const reg = meta.currentTradingPeriod?.regular;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const isTradingNow = !isWeekend && reg && nowSec >= reg.start && nowSec <= reg.end;
+    const marketState = meta.marketState || (isTradingNow ? 'REGULAR' : 'CLOSED');
+
+    // Compute 7d and 30d changes from historical closes
     let change7d = 0;
     let change30d = 0;
     if (validCloses.length >= 2) {
@@ -950,7 +975,7 @@ export const getPricesForSymbols = async (symbols = [], userId = null) => {
  *   3. Crypto tickers           → CoinMarketCap (primary) → CoinGecko (fallback)
  *   4. Static baseline          → FALLBACK_PRICES for anything that errors out
  */
-export const fetchAndCachePrices = async (symbols = [], triggerType = 'cache_miss') => {
+export const fetchAndCachePrices = async (symbols = [], triggerType = 'cache_miss', assetTypeHints = null) => {
   const batchStart = Date.now();
   const batchId = `batch_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
   const symbolSourceMap = {};  // symbol -> { source, success, error, mappedTo, ... }
@@ -975,9 +1000,19 @@ export const fetchAndCachePrices = async (symbols = [], triggerType = 'cache_mis
   // Partition remaining symbols by asset type
   const remaining = symbols.filter((s) => !result[s]);
 
-  // Query database Holdings to discover assetType hints for user-registered symbols
+  // Query database Holdings to discover assetType hints for user-registered symbols.
+  // Also accept pre-computed hints (e.g. from cron which already has cached assetTypes).
   let knownStockSymbols = new Set();
   let knownMfSymbols = new Set();
+
+  // Apply pre-computed hints first (highest priority — from PriceCache.assetType)
+  if (assetTypeHints) {
+    assetTypeHints.forEach((type, sym) => {
+      if (type === 'stock') knownStockSymbols.add(sym);
+      else if (type === 'mutual_fund') knownMfSymbols.add(sym);
+    });
+  }
+
   try {
     const dbHoldings = await Holding.find({ symbol: { $in: remaining } }, 'symbol assetType').lean();
     dbHoldings.forEach((h) => {
@@ -1380,6 +1415,14 @@ export const fetchAndCachePrices = async (symbols = [], triggerType = 'cache_mis
   }
 
   // ── 6. Update MongoDB PriceCache ───────────────────────────────────────────
+  // ── Helper: check if today is a weekend (stock markets always closed) ────────
+  const todayDow = new Date().getDay(); // 0 = Sun, 6 = Sat
+  const isWeekendNow = todayDow === 0 || todayDow === 6;
+
+  // Max realistic single-session stock move before we consider the value corrupt.
+  // Indian markets have ±20% circuit-breaker limits; global is similar.
+  const MAX_STOCK_SESSION_PCT = 20;
+
   await Promise.all(
     symbols.map((sym) => {
       const entry = result[sym];
@@ -1391,9 +1434,23 @@ export const fetchAndCachePrices = async (symbols = [], triggerType = 'cache_mis
             : 'crypto'
       );
 
+      // Sanitize change24h for stocks: if market is closed (weekend or explicit CLOSED state)
+      // AND the value exceeds a realistic session move, it's stale/corrupt — store 0.
+      let sanitizedChange24h = entry.change24h;
+      if (assetType === 'stock') {
+        const ms = entry.marketState ?? null;
+        const marketClosed =
+          (ms !== null && ms !== 'REGULAR' && ms !== 'PRE' && ms !== 'POST') ||
+          (ms === null && isWeekendNow);
+        if (marketClosed && Math.abs(sanitizedChange24h) > MAX_STOCK_SESSION_PCT) {
+          console.warn(`⚠️  Sanitizing suspicious stock change24h for ${sym}: ${sanitizedChange24h.toFixed(2)}% → 0 (market closed, exceeds ±${MAX_STOCK_SESSION_PCT}%)`);
+          sanitizedChange24h = 0;
+        }
+      }
+
       const cacheUpdate = {
         price: entry.price,
-        change24h: entry.change24h,
+        change24h: sanitizedChange24h,
         change7d: entry.change7d,
         change30d: entry.change30d,
         assetType,
@@ -1499,17 +1556,48 @@ export const fetchAndCachePrices = async (symbols = [], triggerType = 'cache_mis
 };
 
 /**
+ * One-time startup cleanup: find any stock PriceCache entries whose change24h
+ * exceeds realistic single-session limits (±20%) and reset them to 0.
+ * These arise when the cron previously mis-routed a stock symbol to CMC/CoinGecko
+ * and cached a crypto token's change as the stock's daily move.
+ */
+export const sanitizeStockCache = async () => {
+  try {
+    const MAX_SESSION_PCT = 20;
+    const result = await PriceCache.updateMany(
+      {
+        assetType: 'stock',
+        $or: [
+          { change24h: { $gt: MAX_SESSION_PCT } },
+          { change24h: { $lt: -MAX_SESSION_PCT } },
+        ],
+      },
+      { $set: { change24h: 0 } }
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`🧹 Sanitized ${result.modifiedCount} stock cache entries with implausible change24h (>±${MAX_SESSION_PCT}%)`);
+    }
+  } catch (err) {
+    console.warn('Could not sanitize stock cache:', err.message);
+  }
+};
+
+/**
  * Initialize background cron job to refresh cached price data every 5 minutes
  */
 export const initPriceCron = () => {
   console.log('⏱️ Initializing PriceCache cron job (runs every 5 minutes)...');
   cron.schedule('*/5 * * * *', async () => {
     try {
-      const cached = await PriceCache.find({}).select('symbol');
+      // Fetch cached entries WITH their assetType so we can correctly partition
+      // stock/MF/crypto symbols without relying solely on Holdings DB lookup
+      const cached = await PriceCache.find({}).select('symbol assetType').lean();
       const symbols = cached.map((c) => c.symbol);
       if (symbols.length > 0) {
         console.log(`🔄 Cron executing: Refreshing ${symbols.length} portfolio price quotes...`);
-        await fetchAndCachePrices(symbols, 'cron');
+        // Build a hint map so fetchAndCachePrices can skip DB routing for already-known types
+        const assetTypeHints = new Map(cached.map((c) => [c.symbol, c.assetType]));
+        await fetchAndCachePrices(symbols, 'cron', assetTypeHints);
       }
     } catch (err) {
       console.error('Error during price refresh cron:', err.message);

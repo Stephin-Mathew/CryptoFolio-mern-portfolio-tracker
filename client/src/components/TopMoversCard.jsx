@@ -169,10 +169,14 @@ export function TopMoversCard({ movers = {}, metrics = {} }) {
   // Check if any stock movers have their market closed
   const hasClosedStocks = [...gainers, ...losers].some((m) => m.isMarketClosed);
 
-  // Market Breadth computation across non-cash portfolio holdings
+  // Market Breadth computation across active non-cash portfolio holdings
+  // When active live holdings exist (e.g. crypto on weekends), breadth reflects active markets today
   const nonCash = (metrics?.perSymbol || []).filter((s) => s.assetType !== 'cash');
-  const advancing = nonCash.filter((s) => (s.change24h || 0) > 0);
-  const declining = nonCash.filter((s) => (s.change24h || 0) < 0);
+  const activeNonCash = nonCash.filter((s) => !s.isMarketClosed);
+  const breadthList = activeNonCash.length > 0 ? activeNonCash : nonCash;
+
+  const advancing = breadthList.filter((s) => (s.change24h || 0) > 0);
+  const declining = breadthList.filter((s) => (s.change24h || 0) < 0);
   const totalActive = advancing.length + declining.length;
 
   const advancePct = totalActive > 0 ? (advancing.length / totalActive) * 100 : 50;
@@ -200,7 +204,7 @@ export function TopMoversCard({ movers = {}, metrics = {} }) {
       symbol: m.symbol,
       name: m.name,
       valueText: `+${fmtDelta(m.pnl24hUsd).replace('+', '')}`,
-      subText: `+${m.change24h?.toFixed(1)}%`,
+      subText: m.isMarketClosed ? `+${m.change24h?.toFixed(1)}% last session` : `+${m.change24h?.toFixed(1)}%`,
       isGainer: true,
       assetType: m.assetType,
     }));
@@ -218,7 +222,7 @@ export function TopMoversCard({ movers = {}, metrics = {} }) {
       symbol: m.symbol,
       name: m.name,
       valueText: fmtDelta(m.pnl24hUsd),
-      subText: `${m.change24h?.toFixed(1)}%`,
+      subText: m.isMarketClosed ? `${m.change24h?.toFixed(1)}% last session` : `${m.change24h?.toFixed(1)}%`,
       isGainer: false,
       assetType: m.assetType,
     }));
